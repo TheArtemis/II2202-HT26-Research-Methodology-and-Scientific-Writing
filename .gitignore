@@ -1,0 +1,13 @@
+# LaTeX related files
+*.aux
+*.log
+*.out
+*.pdf
+*.synctex.gz
+*.toc
+*.lot
+*.lof
+*.lol
+*.lot
+*.lof
+*.lol

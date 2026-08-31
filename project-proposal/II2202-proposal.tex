@@ -1,0 +1,126 @@
+\documentclass[11pt,a4paper]{article}
+
+% Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
+% are chosen to make page density close to the corresponding Word template, 
+%so that the length of reports is the same regardless of which template is used.
+
+\usepackage[margin=1in,headheight=15pt,headsep=24pt,footskip=28pt]{geometry}
+\usepackage[default]{sourcesanspro}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{guidancetext}{HTML}{595959}
+\definecolor{guidancebg}{HTML}{F1F3F5}
+
+\setstretch{1.5}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+\raggedbottom
+
+\titleformat{\section}
+  {\fontsize{14}{16.5}\selectfont\bfseries}
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{0pt}{12pt}
+\titleformat{\subsection}
+  {\fontsize{13}{15.5}\selectfont\bfseries}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{0pt}{4pt}
+
+\newcommand{\unnumberedheading}[1]{%
+  \par\vspace{2pt}{\fontsize{14}{16.5}\selectfont\bfseries #1\par}\vspace{6pt}%
+}
+\newcommand{\reporttitle}[1]{%
+  {\fontsize{16}{19}\selectfont\bfseries #1\par}\vspace{12pt}%
+}
+\newcommand{\guidance}[1]{%
+  {\setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape #1\par}%
+  \vspace{-6pt}%
+}
+\newenvironment{guidancebox}
+  {\begin{mdframed}[backgroundcolor=guidancebg,linecolor=guidancebg,linewidth=0pt,
+    innerleftmargin=3pt,innerrightmargin=3pt,innertopmargin=2pt,innerbottommargin=2pt,
+    skipabove=6pt,skipbelow=10pt]
+   \setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape\setlength{\parskip}{6pt}}
+  {\end{mdframed}}
+\newcommand{\placeholder}[1]{#1\par}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period X}
+\fancyhead[C]{\fontsize{9}{11}\selectfont Project proposal template}
+\fancyhead[R]{\fontsize{9}{11}\selectfont Insert date}
+\fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
+
+\begin{document}
+\reporttitle{[Project title]}
+\unnumberedheading{Authors}
+Student 1 <student1@kth.se>\par
+Student 2 <student2@kth.se>\par
+\vspace{2pt}
+
+\begin{guidancebox}
+\textbf{TEMPLATE GUIDANCE - DELETE BEFORE SUBMISSION.} This is a formative submission that will not be graded, and the goal is for you to explain and motivate your proposed research project. The typical length is 3-5 pages, but there is no strict limit. Each section contains instructions on the typical content. Remove these instructions before submitting your report, and also update the header to reflect your project.\par
+Its main purpose is to establish a suitable scientific problem and a convincing basis for the project, corresponding mainly to Criterion 1 of the grading rubric. A preliminary method is included only to show that the questions are answerable within the course. It is acceptable for details to change after feedback. The proposal should nevertheless identify a specific research problem/question, plausible data collection and analysis, and a realistic plan.\par
+\end{guidancebox}
+
+\section{Introduction}
+
+\guidance{This section is the core of the proposal. It should make the project scientifically motivated, focused, and answerable. It will be revised, expanded, and reused in the research plan and final report.}
+
+\subsection{Background, Rationale, and Related Work}
+
+\guidance{Introduce the broader context and explain why the topic matters. Then narrow the discussion toward the specific problem area the project will address. You think of the topic area as a large tree, where you need to explain the path from the trunk to the leaf representing your specific research problem. Hence, you need to introduce the trunk (main topic), the relevant branch (your subtopic), and eventually reach your leaf and distinguish it from the most closely related leaves. The statements that you treat as facts should be supported by references.}
+
+\placeholder{[Background, rationale, and related work]}
+
+\subsection{Research Problem, Aim, and Research Questions}
+
+\guidance{When you have established the background in Section 1.1, you switch over to this subsection that should explain the specific problem statement and/or knowledge gap that you have identified. Then, highlight the aim of this project, in terms of what part of the research problem/gap you want to address. Finally, formulate some specific questions that are aligned with the aims, that have uncertain answers, and that you will seek answers to.}
+
+\guidance{These questions should be formulated with sufficient precision and narrowness that you can find answers to them within the scope of the project. A bad example is “What is the best way to achieve X?” since it neither specifies how to measure what is best nor limits the number of ways that must be analyzed. Consider your research questions from the SMART criteria: Are they Specific, Measurable, Achievable, Relevant, and Time-bound? If a research question can be stated to have a true or false answer, then you can also provide your hypothesis of what the answer might be.}
+
+\placeholder{[Problem statement / research gap, research aims, research questions, and optional hypotheses (statement or statements to examine during the project)]}
+
+\section{Proposed Research Method}
+
+\guidance{This section will describe the approach you want to take to find answers to your research questions. This involves the work you will do, the data you will collect, and how you will analyze it to answer your questions.  The goal at this point is to convince yourself and your mentor of the project's feasibility and identify possible uncertainties. The work plan will be further detailed in the research plan.}
+
+\subsection{Research Design and Methodological Rationale}
+
+\guidance{Identify the overall research approach/design (e.g., experimental, simulation-based, quantitative, qualitative, or mixed methods) and explain why it is appropriate for the collection of research questions you have formulated. Briefly mention the most relevant alternative and justify your choice as compared to it.}
+
+\placeholder{[Proposed research design and rationale]}
+
+\subsection{Data, Materials, Participants, or Other Sources}
+
+\guidance{Identify what data/evidence will be needed to answer your research questions and where it will come from. Depending on the project, this may include external datasets, simulation results, measurements, interviews with participants, etc. State important selection or sampling limitations that you believe are relevant to finish the project within the scope of the course. Feel free to rename the subsection title to align it with the content of your report and project.}
+
+\placeholder{[Data/materials/participants/sources and selection]}
+
+\subsection{Work Procedure and Data Collection}
+
+\guidance{Describe, at a high level, how the data will be generated or collected. The procedure should be realistic within the course period and available resources (hardware/software/money). It can be helpful to break down the intended work into steps that must be carried out, specify how long each item could take, and note any perceived issues or uncertainties in carrying them out.}
+
+\placeholder{[Planned procedure and data collection]}
+
+\subsection{Planned Data Analysis}
+
+\guidance{Explain how the collected data will be analyzed to answer each research question. Name relevant parameters, measures, comparisons, statistical methods, coding procedures, evaluation metrics, or decision criteria if these are already known. For instance, you can identify a few graphs that you would like to draw and mention what the axes and different curves will represent. You should then be able to answer your research questions once you have obtained these graphs.}
+
+\placeholder{[Planned analysis]}
+
+\unnumberedheading{References}
+
+\guidance{List every source cited in the report and only sources that are actually used. Use one consistent citation style. Prioritize original and scientifically credible sources where available. Copy the bibliographic details from the publisher rather than trusting details generated by an AI tool. Read through the publisher’s bibliographic details, as there are frequent errors, such as missing capitalization, repetitions of the year, and conference abbreviations.}
+\placeholder{[References]}
+\par
+
+\end{document}
