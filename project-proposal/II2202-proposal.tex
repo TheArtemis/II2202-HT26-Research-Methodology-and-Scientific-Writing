@@ -1,19 +1,15 @@
 \documentclass[11pt,a4paper]{article}
 
-% Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
-% are chosen to make page density close to the corresponding Word template, 
-%so that the length of reports is the same regardless of which template is used.
-
 \usepackage[margin=1in,headheight=15pt,headsep=24pt,footskip=28pt]{geometry}
 \usepackage[default]{sourcesanspro}
 \usepackage{setspace}
 \usepackage{xcolor}
-\usepackage{mdframed}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
 \usepackage{lastpage}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
+\usepackage{amsmath}
 
 \definecolor{guidancetext}{HTML}{595959}
 \definecolor{guidancebg}{HTML}{F1F3F5}
@@ -38,89 +34,251 @@
 \newcommand{\reporttitle}[1]{%
   {\fontsize{16}{19}\selectfont\bfseries #1\par}\vspace{12pt}%
 }
-\newcommand{\guidance}[1]{%
-  {\setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape #1\par}%
-  \vspace{-6pt}%
-}
-\newenvironment{guidancebox}
-  {\begin{mdframed}[backgroundcolor=guidancebg,linecolor=guidancebg,linewidth=0pt,
-    innerleftmargin=3pt,innerrightmargin=3pt,innertopmargin=2pt,innerbottommargin=2pt,
-    skipabove=6pt,skipbelow=10pt]
-   \setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape\setlength{\parskip}{6pt}}
-  {\end{mdframed}}
-\newcommand{\placeholder}[1]{#1\par}
 
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
 \fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period X}
-\fancyhead[C]{\fontsize{9}{11}\selectfont Project proposal template}
-\fancyhead[R]{\fontsize{9}{11}\selectfont Insert date}
+\fancyhead[C]{\fontsize{9}{11}\selectfont Raft leadership under asymmetric partitions}
+\fancyhead[R]{\fontsize{9}{11}\selectfont 31 Aug 2026}
 \fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
 
 \begin{document}
-\reporttitle{[Project title]}
+\reporttitle{Comparing Raft Leadership Architectures under Asymmetric Network Partitions}
 \unnumberedheading{Authors}
-Student 1 <student1@kth.se>\par
-Student 2 <student2@kth.se>\par
+Lorenzo Deflorian \textless ldef@kth.se\textgreater\par
+Juozas Skarbalius\par
 \vspace{2pt}
-
-\begin{guidancebox}
-\textbf{TEMPLATE GUIDANCE - DELETE BEFORE SUBMISSION.} This is a formative submission that will not be graded, and the goal is for you to explain and motivate your proposed research project. The typical length is 3-5 pages, but there is no strict limit. Each section contains instructions on the typical content. Remove these instructions before submitting your report, and also update the header to reflect your project.\par
-Its main purpose is to establish a suitable scientific problem and a convincing basis for the project, corresponding mainly to Criterion 1 of the grading rubric. A preliminary method is included only to show that the questions are answerable within the course. It is acceptable for details to change after feedback. The proposal should nevertheless identify a specific research problem/question, plausible data collection and analysis, and a realistic plan.\par
-\end{guidancebox}
 
 \section{Introduction}
 
-\guidance{This section is the core of the proposal. It should make the project scientifically motivated, focused, and answerable. It will be revised, expanded, and reused in the research plan and final report.}
-
 \subsection{Background, Rationale, and Related Work}
 
-\guidance{Introduce the broader context and explain why the topic matters. Then narrow the discussion toward the specific problem area the project will address. You think of the topic area as a large tree, where you need to explain the path from the trunk to the leaf representing your specific research problem. Hence, you need to introduce the trunk (main topic), the relevant branch (your subtopic), and eventually reach your leaf and distinguish it from the most closely related leaves. The statements that you treat as facts should be supported by references.}
+Distributed systems commonly replicate state across several machines to remain available despite individual component failures. Consensus algorithms provide a mechanism by which replicas can agree on a sequence of state transitions while preserving consistency. Raft is a leader-based consensus algorithm designed to provide functionality comparable to Multi-Paxos while separating consensus into relatively understandable components, including leader election, log replication, and membership management~\cite{ongaro_search_2014}. In normal operation, one replica acts as leader and coordinates replication of client commands to a majority of the replicas before they are committed.
 
-\placeholder{[Background, rationale, and related work]}
+Raft's progress therefore depends not only on whether replicas are running, but also on the communication paths between them. Classical failure scenarios are commonly described as fail-stop node failures or complete network partitions in which groups of replicas become mutually disconnected. Real distributed systems can instead experience partial or asymmetric network failures. A partial network partition occurs when only some communication paths fail while other paths remain operational. In an asymmetric failure, communication from replica~$i$ to replica~$j$ can behave differently from communication from $j$ to $i$. Such failures can result from faulty switches, overloaded links, routing inconsistencies, packet filtering, or other gray failures. Gray failures are particularly difficult because different system components may observe inconsistent views of whether another component has failed~\cite{huang_gray_2017}. Studies of partial network partitioning have shown that such failures are realistic and can cause severe availability problems in distributed systems even when all individual replicas remain operational~\cite{alkhatib_partial_2022}.
+
+This distinction is important for leader-based consensus. A replica may, for example, receive messages from the leader but be unable to return responses, or a follower may communicate with another follower while being unable to communicate reliably with the leader. Consequently, the connectivity graph observed by different replicas may differ. Raft's timeout and election mechanisms can then interpret impaired communication as leader failure, potentially causing repeated elections or periods in which a cluster that contains enough operational replicas nevertheless makes little useful progress. Prior work has therefore investigated techniques for tolerating partial partitions~\cite{matsunobu_qsync_2025}, and contemporary consensus research continues to identify partial network partitioning as an important fault model.
+
+At the same time, practical Raft-based systems increasingly employ more than one consensus group. Instead of replicating an entire keyspace through a single Raft group, the keyspace may be divided into shards, each governed by an independent Raft instance. Different groups can elect leaders on different physical machines. Although every individual Raft group still has exactly one leader, the overall system therefore has distributed or multi-leader leadership at the system level. Recent work such as Shipyard explicitly explores this direction and proposes balancing leadership among shards based on runtime conditions such as request frequency and CPU utilization~\cite{yang_shipyard_2026}.
+
+These architectures create different dependencies between network topology and leadership. In a single-group deployment, degradation of the path to one leader can affect the complete workload. In a multi-group deployment, different shards may have different leaders, potentially localizing the impact of a network failure. However, distributing leadership may also increase the number of elections and leadership transitions occurring across the system. Dynamically balancing leadership introduces a further dimension because leadership transfers themselves depend on network conditions.
+
+Existing research establishes that partial network partitions are problematic and that distributed leadership can improve scalability and load distribution, but these questions have largely been investigated separately. The literature provides limited systematic empirical characterization of how different Raft leadership architectures behave under the same controlled asymmetric communication failures. In particular, it remains unclear whether distributing leadership improves service availability under asymmetric failures or instead produces greater aggregate election instability.
+
+This project therefore proposes an experimental comparison of three Raft leadership architectures implemented using the same multi-group Raft library:
+\begin{enumerate}
+  \item \textbf{Single-group Raft:} one Raft consensus group processes the complete workload and therefore has one system-wide leader.
+  \item \textbf{Independent multi-group Raft:} the workload is partitioned among several independent Raft groups whose leaders are independently elected and distributed among physical nodes.
+  \item \textbf{Balanced multi-group Raft:} the same multi-group architecture is used, but leadership transfers are applied to maintain a more even distribution of leaders among physical nodes.
+\end{enumerate}
+
+Dragonboat is selected as the experimental substrate because it provides a production-oriented implementation of multi-group Raft while supporting both ordinary leader election and explicit leadership transfer. This permits all three architectures to use the same consensus implementation, storage subsystem, transport, runtime, and application state machine, reducing implementation differences as a confounding variable~\cite{ni_dragonboat}.
 
 \subsection{Research Problem, Aim, and Research Questions}
 
-\guidance{When you have established the background in Section 1.1, you switch over to this subsection that should explain the specific problem statement and/or knowledge gap that you have identified. Then, highlight the aim of this project, in terms of what part of the research problem/gap you want to address. Finally, formulate some specific questions that are aligned with the aims, that have uncertain answers, and that you will seek answers to.}
+The research problem addressed by this project is the lack of a controlled comparison of Raft leadership architectures under asymmetric network failures.
 
-\guidance{These questions should be formulated with sufficient precision and narrowness that you can find answers to them within the scope of the project. A bad example is “What is the best way to achieve X?” since it neither specifies how to measure what is best nor limits the number of ways that must be analyzed. Consider your research questions from the SMART criteria: Are they Specific, Measurable, Achievable, Relevant, and Time-bound? If a research question can be stated to have a true or false answer, then you can also provide your hypothesis of what the answer might be.}
+Research on partial network partitioning has demonstrated that connectivity failures that do not correspond to complete replica crashes can substantially affect distributed systems~\cite{alkhatib_partial_2022}. Existing Raft-related work primarily investigates how an individual consensus group behaves under failures, while multi-group and multi-leader systems primarily motivate their architecture through scalability, workload distribution, and elimination of centralized bottlenecks~\cite{yang_shipyard_2026}. Consequently, there is insufficient empirical evidence describing how the \emph{distribution of Raft leadership across consensus groups} changes failure behaviour when communication between replicas becomes directionally asymmetric.
 
-\placeholder{[Problem statement / research gap, research aims, research questions, and optional hypotheses (statement or statements to examine during the project)]}
+The aim of this project is therefore:
+
+\textbf{To experimentally characterize how single-group, independently distributed multi-group, and balanced multi-group Raft leadership architectures differ in availability, election stability, latency, and recovery under controlled asymmetric network partitions.}
+
+The project will address the following research questions.
+
+\textbf{RQ1. How does Raft leadership architecture affect service availability and commit latency during asymmetric network partitions?}
+
+Availability will be measured as the fraction of client write requests successfully committed during the fault interval and as the accumulated duration during which no useful progress is made. Performance will additionally be characterized using median and tail commit latency.
+
+\textbf{RQ2. How does Raft leadership architecture affect election stability during asymmetric network partitions?}
+
+Election stability will be characterized using the number of term changes, leader changes, failed election attempts, and leadership transfers occurring during each experiment.
+
+\textbf{RQ3. Does distributing leadership across multiple Raft groups localize the effect of asymmetric partitions compared with a single-group architecture?}
+
+For the multi-group architectures, the proportion of consensus groups that remain capable of processing requests will be measured. This will determine whether network impairment affecting one leader primarily impacts the groups led by that replica or causes wider system-level degradation.
+
+\textbf{RQ4. How does leadership architecture affect recovery after asymmetric communication is restored?}
+
+Recovery will be measured as the elapsed time between removal of the network impairment and restoration of stable request processing, including the time required for elections, log synchronization, and restoration of normal latency.
+
+The following hypotheses will guide the experiments:
+
+\textbf{H1:} Multi-group Raft will maintain higher partial service availability than single-group Raft when asymmetric failures primarily affect the current leader, because consensus groups led by unaffected replicas can continue processing their portions of the workload.
+
+\textbf{H2:} Multi-group Raft will experience a greater total number of leadership changes than single-group Raft because several independent consensus groups can respond separately to the same physical network failure.
+
+\textbf{H3:} Balanced multi-group leadership will improve failure localization when leaders are evenly distributed before a failure, but active leadership management may increase instability when network conditions change during or immediately after leadership transfer.
+
+The hypotheses are directional expectations rather than assumptions required by the project. Findings contradicting them would also constitute meaningful results.
 
 \section{Proposed Research Method}
 
-\guidance{This section will describe the approach you want to take to find answers to your research questions. This involves the work you will do, the data you will collect, and how you will analyze it to answer your questions.  The goal at this point is to convince yourself and your mentor of the project's feasibility and identify possible uncertainties. The work plan will be further detailed in the research plan.}
-
 \subsection{Research Design and Methodological Rationale}
 
-\guidance{Identify the overall research approach/design (e.g., experimental, simulation-based, quantitative, qualitative, or mixed methods) and explain why it is appropriate for the collection of research questions you have formulated. Briefly mention the most relevant alternative and justify your choice as compared to it.}
+The project will use a \textbf{controlled quantitative experimental design}.
 
-\placeholder{[Proposed research design and rationale]}
+The independent variable is the Raft leadership architecture:
+\[
+A \in \{\text{single-group}, \text{multi-group}, \text{balanced multi-group}\}.
+\]
+
+The principal fault variable is the directed network condition between replicas. Communication from node~$i$ to node~$j$ will be represented independently from communication from $j$ to $i$. A directed link can therefore be described using:
+\[
+L_{ij} = (d_{ij}, p_{ij}, j_{ij}),
+\]
+where $d$ represents additional delay, $p$ packet-loss probability, and $j$ latency variation. An asymmetric network condition exists whenever $L_{ij} \neq L_{ji}$.
+
+The experiment will compare architectures while holding constant the Raft implementation, cluster membership, workload, application state machine, persistence configuration, hardware resources, and fault scenario.
+
+This design is preferable to comparing separate systems such as etcd, TiKV, and CockroachDB because such systems differ substantially in storage engines, batching, transaction processing, scheduling, networking, and other implementation details. Differences measured between those systems could therefore not confidently be attributed to leadership architecture.
+
+A simulation-based study was considered as an alternative because it would allow a larger fault space to be evaluated quickly. However, the planned research questions concern experimentally observable behaviour of a concrete Raft implementation, including election timing, implementation-level recovery behaviour, batching, and client-visible latency. A controlled implementation experiment therefore provides greater ecological validity while remaining feasible within the project period.
 
 \subsection{Data, Materials, Participants, or Other Sources}
 
-\guidance{Identify what data/evidence will be needed to answer your research questions and where it will come from. Depending on the project, this may include external datasets, simulation results, measurements, interviews with participants, etc. State important selection or sampling limitations that you believe are relevant to finish the project within the scope of the course. Feel free to rename the subsection title to align it with the content of your report and project.}
+The experiments will use the Dragonboat multi-group Raft library~\cite{ni_dragonboat}. Dragonboat supports multiple independent Raft groups within one deployment and provides leader election, log replication, persistent state machines, and explicit leadership transfer.
 
-\placeholder{[Data/materials/participants/sources and selection]}
+A cluster of five logical nodes will be used:
+\[
+N = \{N_1, N_2, N_3, N_4, N_5\}.
+\]
+
+Each node will run in an isolated Linux container or network namespace. Network impairments will be introduced outside the consensus implementation using Linux traffic-control mechanisms such as \texttt{tc} and \texttt{netem}. Because traffic control can be applied to outgoing traffic independently on each node, communication from $N_i$ to $N_j$ can be degraded without equivalently affecting traffic from $N_j$ to $N_i$.
+
+The replicated application will be a simple key-value state machine. A write workload will be used because writes exercise Raft's replicated log and quorum path directly.
+
+Three configurations will be evaluated.
+
+\textbf{Configuration A --- Single-group Raft}
+
+One five-replica Raft group contains the complete keyspace:
+\[
+G_1 = \{N_1, N_2, N_3, N_4, N_5\}.
+\]
+All writes are routed through this group.
+
+\textbf{Configuration B --- Independent multi-group Raft}
+
+The keyspace will be partitioned among a fixed number $k$ of independent Raft groups, initially expected to be eight. Each group contains the same five physical replicas, but groups elect their leaders independently. A key $x$ will be assigned to a group using a deterministic mapping such as:
+\[
+\text{group}(x) = \text{hash}(x) \bmod k.
+\]
+This configuration represents system-level distributed leadership while preserving standard single-leader Raft semantics inside every group.
+
+\textbf{Configuration C --- Balanced multi-group Raft}
+
+The same group topology will be used, but leaders will initially be distributed as evenly as possible between the physical nodes using Dragonboat leadership-transfer functionality. If eight groups are used over five nodes, no node should initially host substantially more leaders than the others.
+
+The experiment will collect:
+\begin{itemize}
+  \item client request timestamp;
+  \item request completion status;
+  \item request commit latency;
+  \item throughput;
+  \item current leader per Raft group;
+  \item Raft term changes;
+  \item leadership changes;
+  \item leadership-transfer events;
+  \item period without successful commits;
+  \item recovery time following fault removal;
+  \item per-group availability;
+  \item replication/log lag where observable.
+\end{itemize}
+
+System-level CPU and network utilization may additionally be recorded to identify trials in which resource saturation becomes a confounding factor.
 
 \subsection{Work Procedure and Data Collection}
 
-\guidance{Describe, at a high level, how the data will be generated or collected. The procedure should be realistic within the course period and available resources (hardware/software/money). It can be helpful to break down the intended work into steps that must be carried out, specify how long each item could take, and note any perceived issues or uncertainties in carrying them out.}
+The work will proceed in four stages.
 
-\placeholder{[Planned procedure and data collection]}
+\textbf{Stage 1 --- Experimental harness}
+
+A reproducible five-node Dragonboat deployment and simple replicated key-value state machine will be implemented. The harness will support configuration of either one Raft group or several independent groups without changing the underlying state-machine implementation.
+
+A client workload generator will produce a fixed-rate or closed-loop sequence of writes distributed uniformly across the configured keyspace. An initial baseline experiment will verify that all three configurations operate correctly without injected failures.
+
+\textbf{Stage 2 --- Network fault injection}
+
+A collection of asymmetric fault scenarios will be created using Linux traffic control. The initial fault set will include:
+
+\textbf{F1 --- Leader outbound degradation:} traffic from the leader to selected followers receives substantial latency or loss, while traffic from followers to the leader remains healthy.
+
+\textbf{F2 --- Leader inbound degradation:} traffic from selected followers to the leader is degraded while leader-to-follower traffic remains healthy.
+
+\textbf{F3 --- One-way link partition:} communication from one replica to another is completely dropped while the reverse direction remains operational.
+
+\textbf{F4 --- Asymmetric minority partition:} a subset of replicas can transmit reliably to the majority, but communication in the reverse direction is degraded or blocked.
+
+\textbf{F5 --- Asymmetric packet-loss degradation:} one direction experiences increasing packet loss while the opposite direction remains healthy.
+
+Where time permits, fault intensity will be varied across several levels rather than using only healthy and fully partitioned states. This enables identification of thresholds at which each architecture begins to lose availability or election stability.
+
+\textbf{Stage 3 --- Experimental execution}
+
+Each trial will consist of:
+\begin{enumerate}
+  \item starting all replicas;
+  \item waiting until leadership and replication stabilize;
+  \item running the workload under healthy network conditions;
+  \item injecting a predefined asymmetric network impairment;
+  \item maintaining the impairment for a fixed interval;
+  \item removing the impairment;
+  \item continuing the workload until the cluster returns to stable operation.
+\end{enumerate}
+
+Each combination of architecture and fault scenario will be repeated multiple times. Randomized Raft election timers mean that repeated measurements are necessary even when every other experimental parameter is identical.
+
+The order of tested configurations will be randomized where practical to reduce systematic bias caused by environmental effects.
+
+\textbf{Stage 4 --- Validation and cleanup}
+
+Collected traces will be checked for incomplete experiments, measurement failures, or external resource saturation. Experiments will be automatically reproducible from scripts so anomalous runs can be repeated.
+
+The experimental code, network configurations, workload parameters, and analysis scripts will be retained to support reproducibility.
 
 \subsection{Planned Data Analysis}
 
-\guidance{Explain how the collected data will be analyzed to answer each research question. Name relevant parameters, measures, comparisons, statistical methods, coding procedures, evaluation metrics, or decision criteria if these are already known. For instance, you can identify a few graphs that you would like to draw and mention what the axes and different curves will represent. You should then be able to answer your research questions once you have obtained these graphs.}
+The primary analysis will compare the three leadership architectures under identical network-fault conditions.
 
-\placeholder{[Planned analysis]}
+For \textbf{RQ1}, client-visible availability will be computed as:
+\[
+\text{Availability} = \frac{\text{successfully committed requests}}{\text{submitted requests}}
+\]
+for the fault period. The duration for which the system makes no useful progress will also be measured:
+\[
+T_{\text{unavailable}} = \sum \text{intervals containing no successful commits}.
+\]
+Commit latency will be summarized using median, p95, and p99 values. Throughput and latency will be plotted over time so that behaviour before, during, and after fault injection can be observed. For example, one graph will use time on the $x$-axis and successful operations per second on the $y$-axis, with separate curves for the three leadership architectures. The beginning and end of the asymmetric failure interval will be marked. This graph should reveal whether multi-group architectures continue processing a subset of the workload while a single-group architecture becomes unavailable.
+
+For \textbf{RQ2}, election instability will be characterized by:
+\[
+E = \frac{\text{number of leadership changes}}{\text{fault duration}}.
+\]
+Term changes and failed elections will also be counted where the implementation exposes sufficient instrumentation. The multi-group configurations will be analyzed both per consensus group and at system level. This distinction is necessary because ten leadership changes occurring independently in ten groups represent a different failure pattern from repeated changes in one unstable group.
+
+For \textbf{RQ3}, fault localization in the multi-group configurations will be measured using:
+\[
+F_{\text{available}} = \frac{\text{Raft groups processing requests}}{\text{total Raft groups}}.
+\]
+This measure will be compared with global service availability. A result in which only groups whose leaders are located behind degraded links become unavailable would provide evidence of failure localization. Conversely, instability across unrelated groups would indicate propagation of the network fault beyond directly affected leadership.
+
+For \textbf{RQ4}, recovery time will be defined as:
+\[
+T_{\text{recovery}} = t_{\text{stable}} - t_{\text{fault removed}},
+\]
+where $t_{\text{stable}}$ is the point at which successful throughput and leadership remain stable for a predefined observation interval.
+
+For every primary metric, repeated trials will be summarized using central tendency and dispersion. Where sufficient repetitions are available, confidence intervals will be reported. Pairwise differences between architectures will be analyzed using an appropriate statistical test after inspecting the distribution of measurements; a non-parametric alternative will be preferred if assumptions of parametric tests are not satisfied.
+
+The analysis will primarily focus on effect magnitude rather than only statistical significance. For example, a leadership architecture reducing median latency by a statistically detectable but operationally negligible amount will not be treated as a major finding.
+
+The expected outcome of the study is not necessarily the identification of one universally superior architecture. Instead, the project aims to identify \textbf{failure regimes in which leadership distribution changes availability or stability}. This may reveal trade-offs: multi-group leadership may improve fault localization while increasing aggregate election activity, whereas a single leader may provide simpler recovery but expose the complete workload to degradation of one critical communication path.
 
 \unnumberedheading{References}
-
-\guidance{List every source cited in the report and only sources that are actually used. Use one consistent citation style. Prioritize original and scientifically credible sources where available. Copy the bibliographic details from the publisher rather than trusting details generated by an AI tool. Read through the publisher’s bibliographic details, as there are frequent errors, such as missing capitalization, repetitions of the year, and conference abbreviations.}
-\placeholder{[References]}
-\par
+\bibliographystyle{myIEEEtran}
+\bibliography{II2202-proposal}
 
 \end{document}
