@@ -45,27 +45,36 @@
 \renewcommand{\footrulewidth}{0pt}
 \fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period 1}
 \fancyhead[C]{\fontsize{9}{11}\selectfont Project proposal}
-\fancyhead[R]{\fontsize{9}{11}\selectfont 1 September 2026}
+\fancyhead[R]{\fontsize{9}{11}\selectfont 4 September 2026}
 \fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
 
 \begin{document}
 \reporttitle{Transparent Multi-Hop Routing for Raft Under Partial Network Partitions}
 \unnumberedheading{Authors}
 Lorenzo Deflorian <ldef@kth.se>\par
-Juozas Skarbalius\par
+Juozas Skarbalius <juozas@kth.se>\par
 \vspace{2pt}
 
 \section{Introduction}
 
 \subsection{Background, Rationale, and Related Work}
+Various distributed systems, such as databases, distributed file systems, and cluster membership frameworks, rely on consensus protocols to find agreement on a shared state.
+Raft, one of the most widely used consensus protocols to-date, is a leader-based protocol: the leader node appends client entries to its log and replicates them to its followers. 
+An entry is then considered committed once a majority of all nodes (including the leader) have stored such entry.
+The protocol is designed to remain safe under arbitrary message delay and can stay live as long as the leader can talk to a each follower in a majority quorum directly.
 
-Distributed systems often rely on consensus protocols to replicate state across replicas. Raft is a widely used leader-based protocol: the leader appends client operations to its log and replicates them to followers, and an entry is committed once a majority of the cluster has stored it~\cite{ongaro2014raft}. The protocol is designed to remain safe under arbitrary message delay and can stay live as long as the leader can talk to a quorum.
+The consequences of complete network partitions are well understood. If connections to minority of nodes are lost, they can be treated as crashed nodes and the protocol will continue to operate correctly.
+Converseley, if connections to a majority of nodes are lost, the any consensus protocol will fail to make progress.
 
-Complete network partitions are relatively well understood. If a minority of replicas is cut off, they can be treated much like crashed nodes. Partial partitions are trickier. The communication graph may still be connected, yet some replica pairs cannot reach each other directly~\cite{jensen2021raft,alfatafta2020nifty}. In that situation, end-to-end connectivity may exist through intermediate nodes even when direct links fail. Raft, however, assumes peers communicate point-to-point. A leader that loses direct contact with two followers may be unable to form a quorum, even though both followers could still be reached via a third replica if packets were forwarded transparently at the network layer.
+However, partial network partitions present more challanges in Raft. Specifically, a partial partition is a change in network topology where nodes are still, through other nodes, connected to each other, but some direct links between nodes are lost~\cite{jensen2021raft,alfatafta2020nifty}.
+Raft, however, assumes point-to-point links between participating nodes. A leader that loses direct contact with two followers may be unable to form a quorum, even though both followers could still be reached via a third replica if packets were forwarded through that intermediate node at the network layer.
 
-Prior work has looked at this problem from several angles. Jensen, Howard, and Mortier~\cite{jensen2021raft} studied etcd/Raft during partial network failures and reported election instability. They mention overlay routing as a possible remedy---for example, routing traffic between two replicas through a third---but they do not implement or measure that approach. Alfatafta et al.\ introduced Nifty, a transparent communication layer that detours packets around failed paths~\cite{alfatafta2020nifty}. Nifty showed that such routing can mask partial partitions with modest overhead in several systems, and the authors discuss LogCabin (an early Raft implementation), but Raft was not part of their performance evaluation. Omni-Paxos~\cite{ng2023omnipaxos} takes a different route by changing the consensus protocol itself to handle partial connectivity. Its evaluation contrasts protocol-level fixes with transparent overlays and points out that masking connectivity through relays can add hops to the commit path and create shared failure dependencies when one relay carries several logical links.
+Prior work has looked at this problem from several angles. Jensen, Howard, and Mortier~\cite{jensen2021raft} studied etcd/Raft during partial network failures and reported election instability. They mention overlay routing as a possible solution to partially partitioned network topologies in Raft, for example, routing traffic between two replicas through a third. However, they do not implement or measure that approach. 
+Alfatafta et al.\ introduced Nifty, a transparent communication layer that detours packets around failed paths~\cite{alfatafta2020nifty}. Nifty showed that such routing can mask partial partitions with slight overhead in several systems, and while the authors discuss Niffty's application to Raft, it was never included in their evaluation. 
+Omni-Paxos~\cite{ng2023omnipaxos} takes a different route by changing the consensus protocol itself to handle partial connectivity. Particularly, the author proposes a notion of quorum-connectivity - stronger abstraction than the classical majority quorum which additionally to the requirement of having a majority of non-faulty nodes, requires that all nodes in the quorum are reachable from each other. 
+OmniPaxos paper also discusses the option of using a transparent network overlay to mask partial partitions in consensus protocols. However, it claims that introduction of such overlay could lower the levels of performance and fault-tolerance of the consensus. However, the authors do not provide the evaluation of such claim and leave it as a future work.
 
-Together, these papers suggest that transparent multi-hop routing could help Raft in partially connected networks, but they leave open how large the benefit is, when it appears, and what it costs in commit latency and fault tolerance. This project focuses on measuring that gap for Raft.
+Together, these papers suggest that transparent multi-hop routing could help Raft in partially connected networks, but they leave open how large the benefit is, when it appears, and what it costs in commit latency and fault tolerance. This project focuses on such identified gap in evaluation of transparent multi-hop routing for Raft under partial network partitions.
 
 \subsection{Research Problem, Aim, and Research Questions}
 
