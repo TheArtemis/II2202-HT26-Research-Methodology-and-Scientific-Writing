@@ -1,19 +1,19 @@
 \documentclass[11pt,a4paper]{article}
 
 % Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
-% are chosen to make page density close to the corresponding Word template, 
-%so that the length of reports is the same regardless of which template is used.
+% are chosen to make page density close to the corresponding Word template,
+% so that the length of reports is the same regardless of which template is used.
 
 \usepackage[margin=1in,headheight=15pt,headsep=24pt,footskip=28pt]{geometry}
 \usepackage[default]{sourcesanspro}
 \usepackage{setspace}
 \usepackage{xcolor}
-\usepackage{mdframed}
 \usepackage{titlesec}
 \usepackage{fancyhdr}
 \usepackage{lastpage}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
+\usepackage{natbib}
 
 \definecolor{guidancetext}{HTML}{595959}
 \definecolor{guidancebg}{HTML}{F1F3F5}
@@ -38,89 +38,156 @@
 \newcommand{\reporttitle}[1]{%
   {\fontsize{16}{19}\selectfont\bfseries #1\par}\vspace{12pt}%
 }
-\newcommand{\guidance}[1]{%
-  {\setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape #1\par}%
-  \vspace{-6pt}%
-}
-\newenvironment{guidancebox}
-  {\begin{mdframed}[backgroundcolor=guidancebg,linecolor=guidancebg,linewidth=0pt,
-    innerleftmargin=3pt,innerrightmargin=3pt,innertopmargin=2pt,innerbottommargin=2pt,
-    skipabove=6pt,skipbelow=10pt]
-   \setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape\setlength{\parskip}{6pt}}
-  {\end{mdframed}}
-\newcommand{\placeholder}[1]{#1\par}
 
 \pagestyle{fancy}
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
-\fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period X}
-\fancyhead[C]{\fontsize{9}{11}\selectfont Project proposal template}
-\fancyhead[R]{\fontsize{9}{11}\selectfont Insert date}
+\fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period 1}
+\fancyhead[C]{\fontsize{9}{11}\selectfont Project proposal}
+\fancyhead[R]{\fontsize{9}{11}\selectfont 1 September 2026}
 \fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
 
 \begin{document}
-\reporttitle{[Project title]}
+\reporttitle{Transparent Multi-Hop Routing for Vanilla Raft Under Partial Network Partitions}
 \unnumberedheading{Authors}
-Student 1 <student1@kth.se>\par
-Student 2 <student2@kth.se>\par
+Lorenzo Deflorian <ldef@kth.se>\par
+Juozas Skarbalius\par
 \vspace{2pt}
-
-\begin{guidancebox}
-\textbf{TEMPLATE GUIDANCE - DELETE BEFORE SUBMISSION.} This is a formative submission that will not be graded, and the goal is for you to explain and motivate your proposed research project. The typical length is 3-5 pages, but there is no strict limit. Each section contains instructions on the typical content. Remove these instructions before submitting your report, and also update the header to reflect your project.\par
-Its main purpose is to establish a suitable scientific problem and a convincing basis for the project, corresponding mainly to Criterion 1 of the grading rubric. A preliminary method is included only to show that the questions are answerable within the course. It is acceptable for details to change after feedback. The proposal should nevertheless identify a specific research problem/question, plausible data collection and analysis, and a realistic plan.\par
-\end{guidancebox}
 
 \section{Introduction}
 
-\guidance{This section is the core of the proposal. It should make the project scientifically motivated, focused, and answerable. It will be revised, expanded, and reused in the research plan and final report.}
-
 \subsection{Background, Rationale, and Related Work}
 
-\guidance{Introduce the broader context and explain why the topic matters. Then narrow the discussion toward the specific problem area the project will address. You think of the topic area as a large tree, where you need to explain the path from the trunk to the leaf representing your specific research problem. Hence, you need to introduce the trunk (main topic), the relevant branch (your subtopic), and eventually reach your leaf and distinguish it from the most closely related leaves. The statements that you treat as facts should be supported by references.}
+Distributed systems often rely on consensus protocols to replicate state across replicas. Raft is a widely used leader-based protocol: the leader appends client operations to its log and replicates them to followers, and an entry is committed once a majority of the cluster has stored it~\cite{ongaro2014raft}. The protocol is designed to remain safe under arbitrary message delay and can stay live as long as the leader can talk to a quorum.
 
-\placeholder{[Background, rationale, and related work]}
+Complete network partitions are relatively well understood. If a minority of replicas is cut off, they can be treated much like crashed nodes. Partial partitions are trickier. The communication graph may still be connected, yet some replica pairs cannot reach each other directly~\cite{jensen2021raft,alfatafta2020nifty}. In that situation, end-to-end connectivity may exist through intermediate nodes even when direct links fail. Raft, however, assumes peers communicate point-to-point. A leader that loses direct contact with two followers may be unable to form a quorum, even though both followers could still be reached via a third replica if packets were forwarded transparently at the network layer.
+
+Prior work has looked at this problem from several angles. Jensen, Howard, and Mortier~\cite{jensen2021raft} studied etcd/Raft during partial network failures and reported election instability. They mention overlay routing as a possible remedy---for example, routing traffic between two replicas through a third---but they do not implement or measure that approach. Alfatafta et al.\ introduced Nifty, a transparent communication layer that detours packets around failed paths~\cite{alfatafta2020nifty}. Nifty showed that such routing can mask partial partitions with modest overhead in several systems, and the authors discuss LogCabin (an early Raft implementation), but Raft was not part of their performance evaluation. Omni-Paxos~\cite{ng2023omnipaxos} takes a different route by changing the consensus protocol itself to handle partial connectivity. Its evaluation contrasts protocol-level fixes with transparent overlays and points out that masking connectivity through relays can add hops to the commit path and create shared failure dependencies when one relay carries several logical links.
+
+Together, these papers suggest that transparent multi-hop routing could help unmodified Raft in partially connected networks, but they leave open how large the benefit is, when it appears, and what it costs in commit latency and fault tolerance. This project focuses on that gap for vanilla Raft rather than proposing a new consensus algorithm.
 
 \subsection{Research Problem, Aim, and Research Questions}
 
-\guidance{When you have established the background in Section 1.1, you switch over to this subsection that should explain the specific problem statement and/or knowledge gap that you have identified. Then, highlight the aim of this project, in terms of what part of the research problem/gap you want to address. Finally, formulate some specific questions that are aligned with the aims, that have uncertain answers, and that you will seek answers to.}
+\textbf{Research problem.}
+Existing work shows that Raft can struggle under partial connectivity, that transparent routing can mask such partitions in general, and that overlays may trade extra reachability for higher latency and relay dependencies~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}. What is still missing is a controlled, topology-level picture for unmodified Raft: which partially connected graphs regain progress when multi-hop forwarding is enabled, which routed paths actually matter for commits, and how much latency and correlated failure risk that introduces.
 
-\guidance{These questions should be formulated with sufficient precision and narrowness that you can find answers to them within the scope of the project. A bad example is “What is the best way to achieve X?” since it neither specifies how to measure what is best nor limits the number of ways that must be analyzed. Consider your research questions from the SMART criteria: Are they Specific, Measurable, Achievable, Relevant, and Time-bound? If a research question can be stated to have a true or false answer, then you can also provide your hypothesis of what the answer might be.}
+\textbf{Aim.}
+We aim to experimentally characterize transparent multi-hop routing as a network-layer resilience mechanism for vanilla Raft, without changing the consensus implementation itself.
 
-\placeholder{[Problem statement / research gap, research aims, research questions, and optional hypotheses (statement or statements to examine during the project)]}
+\textbf{Research questions.}
+\begin{enumerate}
+  \item \textbf{RQ1 (Liveness):} Under which partial-connectivity topologies does transparent multi-hop routing restore stable Raft progress compared with direct communication only?
+  \item \textbf{RQ2 (Latency):} How does the route stretch of quorum-critical follower paths affect Raft commit latency?
+  \item \textbf{RQ3 (Fault tolerance):} How does routing several logical Raft links through the same relay change the cluster's sensitivity to later node failures?
+\end{enumerate}
+
+These questions are scoped to a five-node cluster, a small set of representative topologies, and roughly 80 hours of work, which we believe is enough to obtain paired direct-vs-overlay comparisons rather than exhaustive graph enumeration.
+
+\textbf{Hypotheses.}
+We expect transparent forwarding to restore progress when the routed graph gives a viable leader stable bidirectional paths to a majority (H1). Commit-latency overhead should follow the slowest follower needed for the fastest available majority, not the average hop count across the cluster (H2). If several logical links share one relay, failing that relay should remove multiple paths at once and reduce effective fault tolerance (H3).
 
 \section{Proposed Research Method}
 
-\guidance{This section will describe the approach you want to take to find answers to your research questions. This involves the work you will do, the data you will collect, and how you will analyze it to answer your questions.  The goal at this point is to convince yourself and your mentor of the project's feasibility and identify possible uncertainties. The work plan will be further detailed in the research plan.}
-
 \subsection{Research Design and Methodological Rationale}
 
-\guidance{Identify the overall research approach/design (e.g., experimental, simulation-based, quantitative, qualitative, or mixed methods) and explain why it is appropriate for the collection of research questions you have formulated. Briefly mention the most relevant alternative and justify your choice as compared to it.}
+We will use a controlled emulation study. A five-node Raft cluster runs inside emulated network namespaces (or Mininet~\cite{lantz2010mininet}) on a single host, where we can fail individual links while keeping alternative physical paths available. Each scenario is run twice: once with direct-only networking and once with transparent multi-hop forwarding that leaves Raft peer addresses unchanged.
 
-\placeholder{[Proposed research design and rationale]}
+This design fits the research questions because we need repeatable control over topology, delay, and failure timing, and we need paired measurements of liveness and latency under the same conditions. A purely analytical approach would struggle to capture Raft's election and leader-change behaviour, which prior work shows can dominate partial-partition outcomes~\cite{jensen2021raft}. Modifying Raft itself, as in Omni-Paxos~\cite{ng2023omnipaxos}, would answer a different question---we deliberately keep the protocol fixed so that any differences can be attributed to the network layer.
 
-\subsection{Data, Materials, Participants, or Other Sources}
+As a simple guide for interpreting latency results, note that for $N$ replicas a commit needs a quorum of $q = \lfloor N/2 \rfloor + 1$ members. With a stable leader, network-dominated commit latency is roughly set by the $(q-1)$-th fastest follower acknowledgement path, because the leader already counts toward the quorum. A multi-hop route therefore matters most when the forwarded follower is among the slowest paths required for the majority.
 
-\guidance{Identify what data/evidence will be needed to answer your research questions and where it will come from. Depending on the project, this may include external datasets, simulation results, measurements, interviews with participants, etc. State important selection or sampling limitations that you believe are relevant to finish the project within the scope of the course. Feel free to rename the subsection title to align it with the content of your report and project.}
+\subsection{Experimental Setup and Topologies}
 
-\placeholder{[Data/materials/participants/sources and selection]}
+\textbf{Platform.}
+The cluster will use an unmodified Raft implementation (likely etcd or another production-grade baseline) with fixed configuration throughout the project, including any extensions such as PreVote or CheckQuorum. Linux \texttt{tc/netem} will inject per-link delay and loss; namespace routing or firewall rules will create asymmetric or pairwise link failures. Transparent forwarding will be implemented with IP routing or a small relay layer so that Raft continues to address the same logical endpoints. A closed-loop client will issue small sequential writes, recording timestamps at submission and commit acknowledgement.
+
+\textbf{Topology set.}
+Table~\ref{tab:topologies} lists the scenarios we plan to run. T0 calibrates the healthy baseline; T1--T4 cover the fault cases of interest.
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{p{0.6cm}p{3.2cm}p{4.2cm}p{4.5cm}}
+    \hline
+    ID & Scenario & Purpose & Expected behaviour \\
+    \hline
+    T0 & Full connectivity & Baseline latency and throughput & Stable leader; no routed paths \\
+    T1 & Non-critical partial cut & A direct path fails but the leader still has a direct quorum & Little or no liveness or latency impact \\
+    T2 & Quorum-restoring relay & Leader loses enough direct links to lose quorum, but alternate paths exist via one relay & Direct mode stalls; overlay should restore progress \\
+    T3 & Chained/asymmetric partition & Only a particular bridge node connects two sides & Tests leader stability and topology sensitivity \\
+    T4 & Relay failure after recovery & Start from T2 or T3 with overlay enabled, then fail the bridge & Measures correlated dependency from routing \\
+    \hline
+  \end{tabular}
+  \caption{Planned partial-connectivity topologies.}
+  \label{tab:topologies}
+\end{table}
+
+\textbf{Independent variables.}
+Routing mode (direct-only vs.\ transparent forwarding), topology (T0--T4), per-hop one-way delay (0.5\,ms, 5\,ms, and 20\,ms as local, moderate, and WAN-like conditions), and route stretch for followers that must be reached via one to three physical hops.
+
+\textbf{Metrics collected.}
+We will record the fraction of writes committed during failure windows, duration of zero-progress intervals, recovery time from fault injection to sustained commits again, leader/term changes, client-observed commit latency (p50, p95, p99, and max), throughput as a secondary measure, and the effect of failing a relay after the overlay has restored progress.
 
 \subsection{Work Procedure and Data Collection}
 
-\guidance{Describe, at a high level, how the data will be generated or collected. The procedure should be realistic within the course period and available resources (hardware/software/money). It can be helpful to break down the intended work into steps that must be carried out, specify how long each item could take, and note any perceived issues or uncertainties in carrying them out.}
+Each experiment follows the same sequence. We warm up the cluster under T0 and confirm a stable leader, run a fixed pre-fault interval to collect baseline metrics, inject the chosen link failure(s) without changing membership, and then run the workload for the remainder of the trial. Every topology is executed once in direct-only mode and once with transparent routing; overlay runs additionally sweep per-hop delay while keeping logical Raft addresses fixed. For T4, the relay is failed only after commits have resumed. Each configuration is repeated at least five times with controlled timing, and we summarize results with medians and percentile ranges.
 
-\placeholder{[Planned procedure and data collection]}
+Table~\ref{tab:plan} outlines the approximate 80-hour work plan. The topology set is intentionally small so that the project stays feasible while still covering the main comparisons.
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{p{5.5cm}rp{5.5cm}}
+    \hline
+    Work package & Hours & Deliverable \\
+    \hline
+    Literature review and experiment specification & 8 & Final topology set, hypotheses, metrics \\
+    Raft cluster and workload harness & 12 & Repeatable five-node baseline \\
+    Network emulation and fault injection & 12 & T0--T4 topologies in direct mode \\
+    Transparent forwarding setup & 10 & Overlay mode with controllable route stretch \\
+    Instrumentation and metric collection & 10 & Latency, commits, leader/term events \\
+    Pilot runs and debugging & 10 & Validated experiment scripts \\
+    Main experimental runs & 10 & Raw results for the bounded matrix \\
+    Analysis, plots, and report material & 8 & Figures, tables, conclusions \\
+    \hline
+    \textbf{Total} & \textbf{80} & Bounded end-to-end study \\
+    \hline
+  \end{tabular}
+  \caption{Feasibility plan (approximately 80 hours).}
+  \label{tab:plan}
+\end{table}
+
+\textbf{Scope and limitations.}
+Single-host emulation will not capture every effect of a real multi-machine deployment; we mitigate this by using controlled delay injection and reporting host resource use. Results may also depend on the specific Raft implementation and its tuning. The topology set is not meant to cover all graphs---the goal is to characterize the mechanism, not to enumerate every partial partition. Routing convergence could affect recovery time; we plan either to preconfigure alternate routes and activate them deterministically or to measure routing setup separately from Raft recovery. Safety is assumed as long as the overlay preserves reliable point-to-point delivery; the experiment focuses on availability and performance.
 
 \subsection{Planned Data Analysis}
 
-\guidance{Explain how the collected data will be analyzed to answer each research question. Name relevant parameters, measures, comparisons, statistical methods, coding procedures, evaluation metrics, or decision criteria if these are already known. For instance, you can identify a few graphs that you would like to draw and mention what the axes and different curves will represent. You should then be able to answer your research questions once you have obtained these graphs.}
+Analysis will emphasize paired comparisons between direct and overlay modes for the same topology and delay setting. The main figures we expect to produce are: commits over time around fault injection, recovery time by topology, commit-latency distributions grouped by route stretch, and leader/term changes during each run. A useful derived variable is whether a routed follower belongs to the fastest majority needed for commit; this should help explain cases where routing restores liveness without much latency penalty.
 
-\placeholder{[Planned analysis]}
+Table~\ref{tab:matrix} summarizes the evaluation matrix. T0 needs fewer repetitions because it serves mainly as calibration; T1--T4 are the core fault scenarios.
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{p{2.3cm}p{2.3cm}p{3.2cm}rp{2.2cm}}
+    \hline
+    Dimension & Levels & Core comparison & Repetitions & Approx.\ runs \\
+    \hline
+    Topology & T0--T4 & Failure shape & 5 & $\sim$5 baselines + fault runs \\
+    Routing & Direct / overlay & Liveness restoration & 5 & Paired per topology \\
+    Per-hop delay & 0.5 / 5 / 20\,ms & Route-stretch cost & 5 & Overlay emphasis \\
+    Relay failure & No / yes & Fault dependency & 5 & T4 only \\
+    \hline
+  \end{tabular}
+  \caption{Bounded evaluation matrix.}
+  \label{tab:matrix}
+\end{table}
+
+The project will be considered successful if we find at least one topology where direct-only Raft loses sustained progress while transparent routing restores it, and if we can report commit-latency distributions under at least three delay settings. A stronger outcome would additionally show that failing a shared relay removes several logical paths at once. A carefully controlled negative result would also be informative---for example, if election churn dominates and routing reachability alone is not enough to stabilize progress.
 
 \unnumberedheading{References}
-
-\guidance{List every source cited in the report and only sources that are actually used. Use one consistent citation style. Prioritize original and scientifically credible sources where available. Copy the bibliographic details from the publisher rather than trusting details generated by an AI tool. Read through the publisher’s bibliographic details, as there are frequent errors, such as missing capitalization, repetitions of the year, and conference abbreviations.}
-\placeholder{[References]}
-\par
+\bibliographystyle{myIEEEtran}
+\bibliography{II2202-proposal}
 
 \end{document}
