@@ -102,8 +102,6 @@ We expect transparent forwarding to restore progress when the routed graph gives
 
 \subsection{Research Design and Methodological Rationale}
 We plan to investigate both research questions in a controlled setup of five Raft nodes on a single host, wrapped around a controlled network infrastructure, so that we could easily control the topology and introduce artificial delays.
-Five node cluster, as we believe, should be sufficient to cover scenarios where multiple majority quorums can be formed. Smallest cluster requirement by Raft is 3 nodes. 
-
 Our intention is to run each identified topology twice: once \footnote{We might change the number of repetitions for each topology if needed to produce statistically more relevant results.} with ordinary point-to-point communication (without any overlay), and once with transparent multi-hop forwarding.
 
 During each experiment run on each topology, we plan to collect at least the following metrics to answer the research questions:
@@ -118,9 +116,9 @@ Such metrics can be collected by instrumenting the existing chosen Raft implemen
 
 \subsection{Experimental Setup and Topologies}
 
-We plan to use a production-grade Raft implementation, most likely etcd, and keep its configuration fixed. A simple closed-loop client will issue small sequential writes and record when each request is submitted and when the commit is acknowledged.
+We plan to use a Raft implementation and keep its configuration fixed. A client will issue small sequential writes and record when each request is submitted and when the commit is acknowledged.
 
-Table~\ref{tab:topologies} shows the topologies we intend to run. T0 is a healthy baseline. T1 breaks a direct path that the leader does not actually need for a quorum, so little should change. The remaining three cases are the partial-connectivity scenarios used by Omni-Paxos~\cite{ng2023omnipaxos} to show how Raft-like protocols lose liveness. We keep those topologies and ask a different question: whether transparent forwarding is enough for Raft to make progress again, without changing the protocol.
+Table~\ref{tab:topologies} shows the topologies we intend to run. T0 is a healthy baseline. T1 breaks a direct path that the leader does not actually need for a quorum, so little should change. The remaining three cases are the partial-connectivity scenarios used by Omni-Paxos~\cite{ng2023omnipaxos} to show how Raft-like protocols lose liveness.
 
 T2 is quorum-loss. The current leader is still alive and reachable by some nodes, but it is no longer quorum-connected, so it cannot replicate to a majority. In the five-node example, C is the leader while A is the only node connected to a majority. Because A can still talk to C, it does not suspect a leader failure and does not start an election, and the other nodes cannot gather enough votes. The cluster stalls even though A could make progress. Overlay routing should restore the missing paths so a leader can reach a majority again.
 
@@ -146,7 +144,7 @@ T4 is the chained case, which is a livelock rather than a deadlock. Connectivity
   \label{tab:topologies}
 \end{table}
 
-What we vary is the routing mode (direct versus overlay), the topology (T0--T4), the one-way delay on each hop (0.5\,ms, 5\,ms, and 20\,ms, standing in for local, moderate, and WAN-like conditions), and how many physical hops a quorum-critical follower is away. What we measure is whether writes keep committing during the failure, how long any stall lasts, how quickly commits resume, whether the leader or term changes, and the commit latency seen by the client (median and tail). Throughput is only a secondary check. Leader and term changes matter especially for T4, where the failure mode in direct communication is repeated elections rather than a silent stall.
+What we vary is the routing mode (direct versus overlay), the topology (T0--T4), the delay of each hop, and how many physical hops a follower is away. What we measure is whether writes keep committing during the scenario, how long any no-commit period lasts, whether the leader changes, and the commit latency seen by the client. Throughput is only a secondary check. Leader and term changes matter especially for T4, where the failure mode in direct communication is repeated elections rather than a silent stall.
 
 \subsection{Work Procedure and Data Collection}
 
