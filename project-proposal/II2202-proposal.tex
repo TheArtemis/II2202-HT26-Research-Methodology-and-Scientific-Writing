@@ -95,25 +95,30 @@ We aim to experimentally characterize transparent multi-hop overlay as a network
   \item \textbf{RQ2 (Latency):} How does the introduction of extra network hops for quorum-critical follower paths affect Raft commit latency?
 \end{enumerate}
 
-At the time of the proposal, we are scoping the experiments to a five-node Raft cluster and a small pre-defined set of underlying network topologies that were mostly identified by Omnipaxos paper ~\cite{ng2023omnipaxos}.
-From the preliminary study of the state-of-the-art research related to this topic, we expect experiments and related results to be produced within approx. 80-90 hours of work.
-
 \textbf{Hypotheses.}
 We expect transparent forwarding to restore progress when the routed graph gives a viable leader stable bidirectional paths to a majority (H1). Commit-latency overhead should follow the slowest follower needed for the fastest available majority, not the average hop count across the cluster (H2).
 
 \section{Proposed Research Method}
 
 \subsection{Research Design and Methodological Rationale}
+We plan to investigate both research questions in a controlled setup of five Raft nodes on a single host, wrapped around a controlled network infrastructure, so that we could easily control the topology and introduce artificial delays.
+Five node cluster, as we believe, should be sufficient to cover scenarios where multiple majority quorums can be formed. Smallest cluster requirement by Raft is 3 nodes. 
 
-We will study this experimentally on a small emulated cluster. Five Raft nodes run on a single host, wrapped around a controlled network infrastructure, so that we can break individual links while leaving other physical paths available. Each topology is run twice: once with ordinary direct communication, and once with transparent multi-hop forwarding.
+Our intention is to run each identified topology twice: once \footnote{We might change the number of repetitions for each topology if needed to produce statistically more relevant results.} with ordinary point-to-point communication (without any overlay), and once with transparent multi-hop forwarding.
 
-This setup will allow us to answer the research questions as we will be able to control the topology, the delay, and the failure timing, and we will be able to compare liveness and latency under those same conditions.
+During each experiment run on each topology, we plan to collect at least the following metrics to answer the research questions:
+\begin{itemize}
+  \item Commit success rate: the percentage of commits that were successful,
+  \item Commit latency: how long it takes for any majority quorum to agree on an entry,
+  \item Election rate: the rate of elections that were triggered,
+  \item Term changes: the number of term changes in the cluster,
+\end{itemize}
 
-For latency, a simple rule of thumb is enough to interpret the results. A cluster of $N$ nodes commits an entry once a quorum of $q = \lfloor N/2 \rfloor + 1$ members have stored it. With a stable leader, the leader already counts toward that quorum, so the delay is largely set by the $(q-1)$-th fastest follower acknowledgement. A multi-hop route therefore matters most when the forwarded follower is among the slowest paths still needed for the majority, not when it is just an extra hop somewhere in the cluster.
+Such metrics can be collected by instrumenting the existing chosen Raft implementation.
 
 \subsection{Experimental Setup and Topologies}
 
-We plan to use a production-grade Raft implementation, most likely etcd, and keep its configuration fixed throughout, including any extra mechanisms such as PreVote or CheckQuorum. Link delay and loss will be injected with Linux \texttt{tc/netem}, and partial cuts with namespace routing or firewall rules. Forwarding itself will be done with ordinary IP routing or a small relay, so that Raft still addresses the same logical endpoints. A simple closed-loop client will issue small sequential writes and record when each request is submitted and when the commit is acknowledged.
+We plan to use a production-grade Raft implementation, most likely etcd, and keep its configuration fixed. A simple closed-loop client will issue small sequential writes and record when each request is submitted and when the commit is acknowledged.
 
 Table~\ref{tab:topologies} shows the topologies we intend to run. T0 is a healthy baseline. T1 breaks a direct path that the leader does not actually need for a quorum, so little should change. The remaining three cases are the partial-connectivity scenarios used by Omni-Paxos~\cite{ng2023omnipaxos} to show how Raft-like protocols lose liveness. We keep those topologies and ask a different question: whether transparent forwarding is enough for Raft to make progress again, without changing the protocol.
 
@@ -155,7 +160,7 @@ A single-host emulation will not capture every effect of a real multi-machine de
 
 The main comparisons are always the same topology and delay, with and without overlay routing. The figures we expect to produce are commits over time around the failure, recovery time by topology, commit-latency distributions grouped by how stretched the route is, and leader or term changes in each run. A useful extra variable is whether the routed follower belongs to the fastest majority the leader can form. That should help explain cases where routing brings liveness back without much extra delay.
 
-Table~\ref{tab:matrix} summarizes how large the study is meant to stay. T0 is mainly calibration, so it needs fewer repetitions; T1--T4 are the actual fault cases.
+Table~\ref{tab:matrix} summarizes how large the study is meant to stay. T0 is mainly calibration, so it needs fewer repetitions; T1--T4 are the actual partial-connectivity caused fault cases.
 
 \begin{table}[h]
   \centering
