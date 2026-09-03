@@ -80,18 +80,23 @@ Together, these papers suggest that transparent multi-hop routing could help Raf
 \subsection{Research Problem, Aim, and Research Questions}
 
 \textbf{Research problem.}
-Existing work shows that Raft can struggle under partial connectivity, that transparent routing can mask such partitions in general, and that overlays may trade extra reachability for higher latency~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}. What is still missing is a controlled, topology-level picture for Raft: which partially connected graphs regain progress when multi-hop forwarding is enabled, which routed paths actually matter for commits, and how much latency that introduces.
+Existing work establishes that Raft struggles under certain partial connectivity scenarios, while most recent work suggests that such scenarios may be masked by transparent multi-hop routing without the need to change the consensus protocol itself ~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}. 
+However, it is also claimed that such transparent routing may trade additional reachability for higher commit latency and reduced fault-tolerance of the consensus protocol.
+
+\textbf{Research Gap}
+In the current state-of-the-art research related to this Raft, there is no experimental evaluation of transparent multi-hop routing for Raft under partial network partitions.
 
 \textbf{Aim.}
-We aim to experimentally characterize transparent multi-hop routing as a network-layer resilience mechanism for Raft, without changing the consensus implementation itself.
+We aim to experimentally characterize transparent multi-hop overlay as a network-layer resilience mechanism for Raft in partial network topologies in terms of liveness and latency, without changing the consensus implementation itself.
 
 \textbf{Research questions.}
 \begin{enumerate}
   \item \textbf{RQ1 (Liveness):} Under which partial-connectivity topologies does transparent multi-hop routing restore stable Raft progress compared with direct communication only?
-  \item \textbf{RQ2 (Latency):} How does the route stretch of quorum-critical follower paths affect Raft commit latency?
+  \item \textbf{RQ2 (Latency):} How does the introduction of extra network hops for quorum-critical follower paths affect Raft commit latency?
 \end{enumerate}
 
-These questions are scoped to a five-node cluster and a small set of representative topologies, which we believe is enough to obtain paired direct-vs-overlay comparisons rather than exhaustive graph enumeration.
+At the time of the proposal, we are scoping the experiments to a five-node Raft cluster and a small pre-defined set of underlying network topologies that were mostly identified by Omnipaxos paper ~\cite{ng2023omnipaxos}.
+From the preliminary study of the state-of-the-art research related to this topic, we expect experiments and related results to be produced within approx. 80-90 hours of work.
 
 \textbf{Hypotheses.}
 We expect transparent forwarding to restore progress when the routed graph gives a viable leader stable bidirectional paths to a majority (H1). Commit-latency overhead should follow the slowest follower needed for the fastest available majority, not the average hop count across the cluster (H2).
