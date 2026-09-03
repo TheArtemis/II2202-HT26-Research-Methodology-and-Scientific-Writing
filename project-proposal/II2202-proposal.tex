@@ -110,26 +110,33 @@ For latency, a simple rule of thumb is enough to interpret the results. A cluste
 
 We plan to use a production-grade Raft implementation, most likely etcd, and keep its configuration fixed throughout, including any extra mechanisms such as PreVote or CheckQuorum. Link delay and loss will be injected with Linux \texttt{tc/netem}, and partial cuts with namespace routing or firewall rules. Forwarding itself will be done with ordinary IP routing or a small relay, so that Raft still addresses the same logical endpoints. A simple closed-loop client will issue small sequential writes and record when each request is submitted and when the commit is acknowledged.
 
-Table~\ref{tab:topologies} shows the topologies we intend to run. T0 is a healthy baseline. T1 breaks a direct path that the leader does not actually need for a quorum, so little should change. T2 is the case that matters most for RQ1: the leader loses enough direct contacts to stall, but the missing followers can still be reached through a relay, so overlay routing should restore progress. T3 is a more awkward chained or asymmetric cut, where only one bridge node joins the two sides, to see how sensitive leader stability and latency are to the shape of the graph.
+Table~\ref{tab:topologies} shows the topologies we intend to run. T0 is a healthy baseline. T1 breaks a direct path that the leader does not actually need for a quorum, so little should change. The remaining three cases are the partial-connectivity scenarios used by Omni-Paxos~\cite{ng2023omnipaxos} to show how Raft-like protocols lose liveness. We keep those topologies and ask a different question: whether transparent forwarding is enough for Raft to make progress again, without changing the protocol.
+
+T2 is quorum-loss. The current leader is still alive and reachable by some nodes, but it is no longer quorum-connected, so it cannot replicate to a majority. In the five-node example, C is the leader while A is the only node connected to a majority. Because A can still talk to C, it does not suspect a leader failure and does not start an election, and the other nodes cannot gather enough votes. The cluster stalls even though A could make progress. Overlay routing should restore the missing paths so a leader can reach a majority again.
+
+T3 is constrained election. The existing leader is completely unreachable, so a quorum-connected server does try to become leader. A is the only quorum-connected node, but Raft can still refuse to elect it if its log is older than B's and D's, even though B and D themselves cannot become leaders. Direct mode can therefore fail to elect anyone useful. Overlay routing should make the cluster fully reachable again, so either a sufficiently up-to-date candidate can win or a lagging one can catch up once the paths exist.
+
+T4 is the chained case, which is a livelock rather than a deadlock. Connectivity forms a chain, for example $B$--$A$--$C$, while $B$ and $C$ cannot talk directly. If $B$ is leader, $C$ cannot hear $B$ and starts an election with a higher term; that term reaches $B$ through $A$, $B$ steps down and later starts another election, and the cycle can continue. With overlay forwarding, $B$ and $C$ should hear each other through $A$, which should stop the repeated leader changes.
 
 \begin{table}[h]
   \centering
   \small
-  \begin{tabular}{p{0.6cm}p{3.2cm}p{4.2cm}p{4.5cm}}
+  \begin{tabular}{p{0.6cm}p{3.4cm}p{4.4cm}p{4.3cm}}
     \hline
     ID & Scenario & Purpose & Expected behaviour \\
     \hline
     T0 & Full connectivity & Baseline latency and throughput & Stable leader; no routed paths \\
     T1 & Non-critical partial cut & A direct path fails but the leader still has a direct quorum & Little or no liveness or latency impact \\
-    T2 & Quorum-restoring relay & Leader loses enough direct links to lose quorum, but alternate paths exist via one relay & Direct mode stalls; overlay should restore progress \\
-    T3 & Chained/asymmetric partition & Only a particular bridge node connects two sides & Tests leader stability and topology sensitivity \\
+    T2 & Quorum-loss & Leader is alive but no longer quorum-connected & Direct mode stalls; overlay should restore a majority path \\
+    T3 & Constrained election & A quorum-connected node cannot win because others have a newer log & Direct mode may fail to elect; overlay should restore progress \\
+    T4 & Chained & Only a bridge node connects the two sides & Direct mode livelocks in elections; overlay should stabilize the leader \\
     \hline
   \end{tabular}
   \caption{Planned partial-connectivity topologies.}
   \label{tab:topologies}
 \end{table}
 
-What we vary is the routing mode (direct versus overlay), the topology (T0--T3), the one-way delay on each hop (0.5\,ms, 5\,ms, and 20\,ms, standing in for local, moderate, and WAN-like conditions), and how many physical hops a quorum-critical follower is away. What we measure is whether writes keep committing during the failure, how long any stall lasts, how quickly commits resume, whether the leader or term changes, and the commit latency seen by the client (median and tail). Throughput is only a secondary check.
+What we vary is the routing mode (direct versus overlay), the topology (T0--T4), the one-way delay on each hop (0.5\,ms, 5\,ms, and 20\,ms, standing in for local, moderate, and WAN-like conditions), and how many physical hops a quorum-critical follower is away. What we measure is whether writes keep committing during the failure, how long any stall lasts, how quickly commits resume, whether the leader or term changes, and the commit latency seen by the client (median and tail). Throughput is only a secondary check. Leader and term changes matter especially for T4, where the failure mode in direct communication is repeated elections rather than a silent stall.
 
 \subsection{Work Procedure and Data Collection}
 
@@ -143,7 +150,7 @@ A single-host emulation will not capture every effect of a real multi-machine de
 
 The main comparisons are always the same topology and delay, with and without overlay routing. The figures we expect to produce are commits over time around the failure, recovery time by topology, commit-latency distributions grouped by how stretched the route is, and leader or term changes in each run. A useful extra variable is whether the routed follower belongs to the fastest majority the leader can form. That should help explain cases where routing brings liveness back without much extra delay.
 
-Table~\ref{tab:matrix} summarizes how large the study is meant to stay. T0 is mainly calibration, so it needs fewer repetitions; T1--T3 are the actual fault cases.
+Table~\ref{tab:matrix} summarizes how large the study is meant to stay. T0 is mainly calibration, so it needs fewer repetitions; T1--T4 are the actual fault cases.
 
 \begin{table}[h]
   \centering
@@ -152,7 +159,7 @@ Table~\ref{tab:matrix} summarizes how large the study is meant to stay. T0 is ma
     \hline
     Dimension & Levels & Core comparison & Repetitions & Approx.\ runs \\
     \hline
-    Topology & T0--T3 & Failure shape & 5 & $\sim$5 baselines + fault runs \\
+    Topology & T0--T4 & Failure shape & 5 & $\sim$5 baselines + fault runs \\
     Routing & Direct / overlay & Liveness restoration & 5 & Paired per topology \\
     Per-hop delay & 0.5 / 5 / 20\,ms & Route-stretch cost & 5 & Overlay emphasis \\
     \hline
