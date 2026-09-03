@@ -1,4 +1,4 @@
-This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+This is BibTeX, Version 0.99e (TeX Live 2026)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: II2202-proposal.aux
 The style file: myIEEEtran.bst
@@ -13,44 +13,44 @@ Database file #1: II2202-proposal.bib
 -- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
 
 Done.
-You've used 4 entries,
+You've used 5 entries,
             4183 wiz_defined-function locations,
-            857 strings with 8448 characters,
-and the built_in function-call counts, 3684 in all, are:
-= -- 278
-> -- 78
-< -- 25
-+ -- 42
-- -- 13
-* -- 190
-:= -- 554
-add.period$ -- 14
-call.type$ -- 4
-change.case$ -- 4
-chr.to.int$ -- 66
-cite$ -- 4
-duplicate$ -- 260
-empty$ -- 342
-format.name$ -- 17
-if$ -- 845
+            857 strings with 8375 characters,
+and the built_in function-call counts, 4333 in all, are:
+= -- 323
+> -- 95
+< -- 34
++ -- 52
+- -- 15
+* -- 208
+:= -- 623
+add.period$ -- 12
+call.type$ -- 5
+change.case$ -- 5
+chr.to.int$ -- 90
+cite$ -- 5
+duplicate$ -- 301
+empty$ -- 408
+format.name$ -- 20
+if$ -- 1010
 int.to.chr$ -- 0
-int.to.str$ -- 4
-missing$ -- 47
-newline$ -- 37
-num.names$ -- 4
-pop$ -- 127
+int.to.str$ -- 5
+missing$ -- 49
+newline$ -- 38
+num.names$ -- 5
+pop$ -- 142
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 2
-skip$ -- 277
+skip$ -- 337
 stack$ -- 0
-substring$ -- 158
-swap$ -- 192
-text.length$ -- 3
+substring$ -- 215
+swap$ -- 223
+text.length$ -- 4
 text.prefix$ -- 0
 top$ -- 5
-type$ -- 4
+type$ -- 5
 warning$ -- 0
-while$ -- 16
-width$ -- 5
-write$ -- 66
+while$ -- 21
+width$ -- 6
+write$ -- 69
