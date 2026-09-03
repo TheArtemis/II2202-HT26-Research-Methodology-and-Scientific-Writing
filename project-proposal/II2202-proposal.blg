@@ -1,0 +1,56 @@
+This is BibTeX, Version 0.99d (TeX Live 2022/dev/Debian)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: II2202-proposal.aux
+The style file: myIEEEtran.bst
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Reallocated wiz_functions (elt_size=4) to 6000 items from 3000.
+Reallocated singl_function (elt_size=4) to 100 items from 50.
+Database file #1: II2202-proposal.bib
+-- myIEEEtran.bst based upon IEEEtran.bst version 1.13 based upon (2008/09/30) by Michael Shell.
+-- http://www.michaelshell.org/tex/ieeetran/bibtex/
+-- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
+
+Done.
+You've used 4 entries,
+            4183 wiz_defined-function locations,
+            857 strings with 8448 characters,
+and the built_in function-call counts, 3684 in all, are:
+= -- 278
+> -- 78
+< -- 25
++ -- 42
+- -- 13
+* -- 190
+:= -- 554
+add.period$ -- 14
+call.type$ -- 4
+change.case$ -- 4
+chr.to.int$ -- 66
+cite$ -- 4
+duplicate$ -- 260
+empty$ -- 342
+format.name$ -- 17
+if$ -- 845
+int.to.chr$ -- 0
+int.to.str$ -- 4
+missing$ -- 47
+newline$ -- 37
+num.names$ -- 4
+pop$ -- 127
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 2
+skip$ -- 277
+stack$ -- 0
+substring$ -- 158
+swap$ -- 192
+text.length$ -- 3
+text.prefix$ -- 0
+top$ -- 5
+type$ -- 4
+warning$ -- 0
+while$ -- 16
+width$ -- 5
+write$ -- 66

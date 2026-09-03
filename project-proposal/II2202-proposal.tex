@@ -13,7 +13,8 @@
 \usepackage{lastpage}
 \usepackage{microtype}
 \usepackage[hidelinks]{hyperref}
-\usepackage{natbib}
+\usepackage[numbers,sort&compress]{natbib}
+\renewcommand{\bibsection}{\unnumberedheading{\refname}}
 
 \definecolor{guidancetext}{HTML}{595959}
 \definecolor{guidancebg}{HTML}{F1F3F5}
@@ -59,7 +60,7 @@ Juozas Skarbalius <juozas@kth.se>\par
 
 \subsection{Background, Rationale, and Related Work}
 Various distributed systems, such as databases, distributed file systems, and cluster membership frameworks, rely on consensus protocols to find agreement on a shared state.
-Raft, one of the most widely used consensus protocols to-date, is a leader-based protocol: the leader node appends client entries to its log and replicates them to its followers. 
+Raft, one of the most widely used consensus protocols to-date, is a leader-based protocol: the leader node appends client entries to its log and replicates them to its followers.
 An entry is then considered committed once a majority of all nodes (including the leader) have stored such entry.
 The protocol is designed to remain safe under arbitrary message delay and can stay live as long as the leader can talk to a each follower in a majority quorum directly.
 
@@ -69,17 +70,17 @@ Converseley, if connections to a majority of nodes are lost, the any consensus p
 However, partial network partitions present more challanges in Raft. Specifically, a partial partition is a change in network topology where nodes are still, through other nodes, connected to each other, but some direct links between nodes are lost~\cite{jensen2021raft,alfatafta2020nifty}.
 Raft, however, assumes point-to-point links between participating nodes. A leader that loses direct contact with two followers may be unable to form a quorum, even though both followers could still be reached via a third replica if packets were forwarded through that intermediate node at the network layer.
 
-Prior work has looked at this problem from several angles. Jensen, Howard, and Mortier~\cite{jensen2021raft} studied etcd/Raft during partial network failures and reported election instability. They mention overlay routing as a possible solution to partially partitioned network topologies in Raft, for example, routing traffic between two replicas through a third. However, they do not implement or measure that approach. 
-Alfatafta et al.\ introduced Nifty, a transparent communication layer that detours packets around failed paths~\cite{alfatafta2020nifty}. Nifty showed that such routing can mask partial partitions with slight overhead in several systems, and while the authors discuss Niffty's application to Raft, it was never included in their evaluation. 
-Omni-Paxos~\cite{ng2023omnipaxos} takes a different route by changing the consensus protocol itself to handle partial connectivity. Particularly, the author proposes a notion of quorum-connectivity - stronger abstraction than the classical majority quorum which additionally to the requirement of having a majority of non-faulty nodes, requires that all nodes in the quorum are reachable from each other. 
+Prior work has looked at this problem from several angles. Jensen, Howard, and Mortier~\cite{jensen2021raft} studied etcd/Raft during partial network failures and reported election instability. They mention overlay routing as a possible solution to partially partitioned network topologies in Raft, for example, routing traffic between two replicas through a third. However, they do not implement or measure that approach.
+Alfatafta et al.\ introduced Nifty, a transparent communication layer that detours packets around failed paths~\cite{alfatafta2020nifty}. Nifty showed that such routing can mask partial partitions with slight overhead in several systems, and while the authors discuss Niffty's application to Raft, it was never included in their evaluation.
+Omni-Paxos~\cite{ng2023omnipaxos} takes a different route by changing the consensus protocol itself to handle partial connectivity. Particularly, the author proposes a notion of quorum-connectivity - stronger abstraction than the classical majority quorum which additionally to the requirement of having a majority of non-faulty nodes, requires that all nodes in the quorum are reachable from each other.
 OmniPaxos paper also discusses the option of using a transparent network overlay to mask partial partitions in consensus protocols. However, it claims that introduction of such overlay could lower the levels of performance and fault-tolerance of the consensus. However, the authors do not provide the evaluation of such claim and leave it as a future work.
 
-Together, these papers suggest that transparent multi-hop routing could help Raft in partially connected networks, but they leave open how large the benefit is, when it appears, and what it costs in commit latency and fault tolerance. This project focuses on such identified gap in evaluation of transparent multi-hop routing for Raft under partial network partitions.
+Together, these papers suggest that transparent multi-hop routing could help Raft in partially connected networks, but they leave open how large the benefit is, when it appears, and what it costs in commit latency. This project focuses on such identified gap in evaluation of transparent multi-hop routing for Raft under partial network partitions.
 
 \subsection{Research Problem, Aim, and Research Questions}
 
 \textbf{Research problem.}
-Existing work shows that Raft can struggle under partial connectivity, that transparent routing can mask such partitions in general, and that overlays may trade extra reachability for higher latency and relay dependencies~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}. What is still missing is a controlled, topology-level picture for Raft: which partially connected graphs regain progress when multi-hop forwarding is enabled, which routed paths actually matter for commits, and how much latency and correlated failure risk that introduces.
+Existing work shows that Raft can struggle under partial connectivity, that transparent routing can mask such partitions in general, and that overlays may trade extra reachability for higher latency~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}. What is still missing is a controlled, topology-level picture for Raft: which partially connected graphs regain progress when multi-hop forwarding is enabled, which routed paths actually matter for commits, and how much latency that introduces.
 
 \textbf{Aim.}
 We aim to experimentally characterize transparent multi-hop routing as a network-layer resilience mechanism for Raft, without changing the consensus implementation itself.
@@ -88,31 +89,28 @@ We aim to experimentally characterize transparent multi-hop routing as a network
 \begin{enumerate}
   \item \textbf{RQ1 (Liveness):} Under which partial-connectivity topologies does transparent multi-hop routing restore stable Raft progress compared with direct communication only?
   \item \textbf{RQ2 (Latency):} How does the route stretch of quorum-critical follower paths affect Raft commit latency?
-  \item \textbf{RQ3 (Fault tolerance):} How does routing several logical Raft links through the same relay change the cluster's sensitivity to later node failures?
 \end{enumerate}
 
 These questions are scoped to a five-node cluster, a small set of representative topologies, and roughly 80 hours of work, which we believe is enough to obtain paired direct-vs-overlay comparisons rather than exhaustive graph enumeration.
 
 \textbf{Hypotheses.}
-We expect transparent forwarding to restore progress when the routed graph gives a viable leader stable bidirectional paths to a majority (H1). Commit-latency overhead should follow the slowest follower needed for the fastest available majority, not the average hop count across the cluster (H2). If several logical links share one relay, failing that relay should remove multiple paths at once and reduce effective fault tolerance (H3).
+We expect transparent forwarding to restore progress when the routed graph gives a viable leader stable bidirectional paths to a majority (H1). Commit-latency overhead should follow the slowest follower needed for the fastest available majority, not the average hop count across the cluster (H2).
 
 \section{Proposed Research Method}
 
 \subsection{Research Design and Methodological Rationale}
 
-We will use a controlled emulation study. A five-node Raft cluster runs inside emulated network namespaces (or Mininet~\cite{lantz2010mininet}) on a single host, where we can fail individual links while keeping alternative physical paths available. Each scenario is run twice: once with direct-only networking and once with transparent multi-hop forwarding that leaves Raft peer addresses unchanged.
+We will study this experimentally on a small emulated cluster. Five Raft nodes run on a single host, wrapped around a controlled network infrastructure, so that we can break individual links while leaving other physical paths available. Each topology is run twice: once with ordinary direct communication, and once with transparent multi-hop forwarding.
 
-This design fits the research questions because we need repeatable control over topology, delay, and failure timing, and we need paired measurements of liveness and latency under the same conditions. A purely analytical approach would struggle to capture Raft's election and leader-change behaviour, which prior work shows can dominate partial-partition outcomes~\cite{jensen2021raft}. Modifying Raft itself, as in Omni-Paxos~\cite{ng2023omnipaxos}, would answer a different question---we deliberately keep the protocol fixed so that any differences can be attributed to the network layer.
+This setup will allow us to answer the research questions as we will be able to control the topology, the delay, and the failure timing, and we will be able to compare liveness and latency under those same conditions.
 
-As a simple guide for interpreting latency results, note that for $N$ replicas a commit needs a quorum of $q = \lfloor N/2 \rfloor + 1$ members. With a stable leader, network-dominated commit latency is roughly set by the $(q-1)$-th fastest follower acknowledgement path, because the leader already counts toward the quorum. A multi-hop route therefore matters most when the forwarded follower is among the slowest paths required for the majority.
+For latency, a simple rule of thumb is enough to interpret the results. A cluster of $N$ nodes commits an entry once a quorum of $q = \lfloor N/2 \rfloor + 1$ members have stored it. With a stable leader, the leader already counts toward that quorum, so the delay is largely set by the $(q-1)$-th fastest follower acknowledgement. A multi-hop route therefore matters most when the forwarded follower is among the slowest paths still needed for the majority, not when it is just an extra hop somewhere in the cluster.
 
 \subsection{Experimental Setup and Topologies}
 
-\textbf{Platform.}
-The cluster will use a Raft implementation (likely etcd or another production-grade baseline) with fixed configuration throughout the project, including any extensions such as PreVote or CheckQuorum. Linux \texttt{tc/netem} will inject per-link delay and loss; namespace routing or firewall rules will create asymmetric or pairwise link failures. Transparent forwarding will be implemented with IP routing or a small relay layer so that Raft continues to address the same logical endpoints. A closed-loop client will issue small sequential writes, recording timestamps at submission and commit acknowledgement.
+We plan to use a production-grade Raft implementation, most likely etcd, and keep its configuration fixed throughout, including any extra mechanisms such as PreVote or CheckQuorum. Link delay and loss will be injected with Linux \texttt{tc/netem}, and partial cuts with namespace routing or firewall rules. Forwarding itself will be done with ordinary IP routing or a small relay, so that Raft still addresses the same logical endpoints. A simple closed-loop client will issue small sequential writes and record when each request is submitted and when the commit is acknowledged.
 
-\textbf{Topology set.}
-Table~\ref{tab:topologies} lists the scenarios we plan to run. T0 calibrates the healthy baseline; T1--T4 cover the fault cases of interest.
+Table~\ref{tab:topologies} shows the topologies we intend to run. T0 is a healthy baseline. T1 breaks a direct path that the leader does not actually need for a quorum, so little should change. T2 is the case that matters most for RQ1: the leader loses enough direct contacts to stall, but the missing followers can still be reached through a relay, so overlay routing should restore progress. T3 is a more awkward chained or asymmetric cut, where only one bridge node joins the two sides, to see how sensitive leader stability and latency are to the shape of the graph.
 
 \begin{table}[h]
   \centering
@@ -125,24 +123,19 @@ Table~\ref{tab:topologies} lists the scenarios we plan to run. T0 calibrates the
     T1 & Non-critical partial cut & A direct path fails but the leader still has a direct quorum & Little or no liveness or latency impact \\
     T2 & Quorum-restoring relay & Leader loses enough direct links to lose quorum, but alternate paths exist via one relay & Direct mode stalls; overlay should restore progress \\
     T3 & Chained/asymmetric partition & Only a particular bridge node connects two sides & Tests leader stability and topology sensitivity \\
-    T4 & Relay failure after recovery & Start from T2 or T3 with overlay enabled, then fail the bridge & Measures correlated dependency from routing \\
     \hline
   \end{tabular}
   \caption{Planned partial-connectivity topologies.}
   \label{tab:topologies}
 \end{table}
 
-\textbf{Independent variables.}
-Routing mode (direct-only vs.\ transparent forwarding), topology (T0--T4), per-hop one-way delay (0.5\,ms, 5\,ms, and 20\,ms as local, moderate, and WAN-like conditions), and route stretch for followers that must be reached via one to three physical hops.
-
-\textbf{Metrics collected.}
-We will record the fraction of writes committed during failure windows, duration of zero-progress intervals, recovery time from fault injection to sustained commits again, leader/term changes, client-observed commit latency (p50, p95, p99, and max), throughput as a secondary measure, and the effect of failing a relay after the overlay has restored progress.
+What we vary is the routing mode (direct versus overlay), the topology (T0--T3), the one-way delay on each hop (0.5\,ms, 5\,ms, and 20\,ms, standing in for local, moderate, and WAN-like conditions), and how many physical hops a quorum-critical follower is away. What we measure is whether writes keep committing during the failure, how long any stall lasts, how quickly commits resume, whether the leader or term changes, and the commit latency seen by the client (median and tail). Throughput is only a secondary check.
 
 \subsection{Work Procedure and Data Collection}
 
-Each experiment follows the same sequence. We warm up the cluster under T0 and confirm a stable leader, run a fixed pre-fault interval to collect baseline metrics, inject the chosen link failure(s) without changing membership, and then run the workload for the remainder of the trial. Every topology is executed once in direct-only mode and once with transparent routing; overlay runs additionally sweep per-hop delay while keeping logical Raft addresses fixed. For T4, the relay is failed only after commits have resumed. Each configuration is repeated at least five times with controlled timing, and we summarize results with medians and percentile ranges.
+Every run follows the same script. We start from T0, wait until there is a stable leader, collect a short baseline, then inject the chosen link failures without changing membership, and keep the workload going for the rest of the trial. Each topology is done once with direct communication and once with overlay routing. Overlay runs also sweep the three delay settings, while Raft continues to use the same peer addresses. We repeat each configuration at least five times with controlled timing and summarize the results with medians and percentile ranges.
 
-Table~\ref{tab:plan} outlines the approximate 80-hour work plan. The topology set is intentionally small so that the project stays feasible while still covering the main comparisons.
+Table~\ref{tab:plan} is a rough 80-hour plan. The topology set is deliberately small: we would rather obtain clean paired comparisons than try to enumerate every possible graph.
 
 \begin{table}[h]
   \centering
@@ -153,7 +146,7 @@ Table~\ref{tab:plan} outlines the approximate 80-hour work plan. The topology se
     \hline
     Literature review and experiment specification & 8 & Final topology set, hypotheses, metrics \\
     Raft cluster and workload harness & 12 & Repeatable five-node baseline \\
-    Network emulation and fault injection & 12 & T0--T4 topologies in direct mode \\
+    Network emulation and fault injection & 12 & T0--T3 topologies in direct mode \\
     Transparent forwarding setup & 10 & Overlay mode with controllable route stretch \\
     Instrumentation and metric collection & 10 & Latency, commits, leader/term events \\
     Pilot runs and debugging & 10 & Validated experiment scripts \\
@@ -167,14 +160,13 @@ Table~\ref{tab:plan} outlines the approximate 80-hour work plan. The topology se
   \label{tab:plan}
 \end{table}
 
-\textbf{Scope and limitations.}
-Single-host emulation will not capture every effect of a real multi-machine deployment; we mitigate this by using controlled delay injection and reporting host resource use. Results may also depend on the specific Raft implementation and its tuning. The topology set is not meant to cover all graphs---the goal is to characterize the mechanism, not to enumerate every partial partition. Routing convergence could affect recovery time; we plan either to preconfigure alternate routes and activate them deterministically or to measure routing setup separately from Raft recovery. Safety is assumed as long as the overlay preserves reliable point-to-point delivery; the experiment focuses on availability and performance.
+A single-host emulation will not capture every effect of a real multi-machine deployment. We mitigate this by injecting controlled delay and reporting how busy the host is. Results may also depend on which Raft implementation we pick and how it is tuned. We are not trying to cover all graphs; the point is to characterize the mechanism, not to enumerate every partial partition. If routing itself takes time to converge, we will either preconfigure the alternate paths and switch them on in a controlled way, or measure that setup time separately from Raft's recovery. Safety is assumed as long as the overlay still delivers reliable point-to-point messages. The experiment itself is about availability and performance.
 
 \subsection{Planned Data Analysis}
 
-Analysis will emphasize paired comparisons between direct and overlay modes for the same topology and delay setting. The main figures we expect to produce are: commits over time around fault injection, recovery time by topology, commit-latency distributions grouped by route stretch, and leader/term changes during each run. A useful derived variable is whether a routed follower belongs to the fastest majority needed for commit; this should help explain cases where routing restores liveness without much latency penalty.
+The main comparisons are always the same topology and delay, with and without overlay routing. The figures we expect to produce are commits over time around the failure, recovery time by topology, commit-latency distributions grouped by how stretched the route is, and leader or term changes in each run. A useful extra variable is whether the routed follower belongs to the fastest majority the leader can form. That should help explain cases where routing brings liveness back without much extra delay.
 
-Table~\ref{tab:matrix} summarizes the evaluation matrix. T0 needs fewer repetitions because it serves mainly as calibration; T1--T4 are the core fault scenarios.
+Table~\ref{tab:matrix} summarizes how large the study is meant to stay. T0 is mainly calibration, so it needs fewer repetitions; T1--T3 are the actual fault cases.
 
 \begin{table}[h]
   \centering
@@ -183,19 +175,17 @@ Table~\ref{tab:matrix} summarizes the evaluation matrix. T0 needs fewer repetiti
     \hline
     Dimension & Levels & Core comparison & Repetitions & Approx.\ runs \\
     \hline
-    Topology & T0--T4 & Failure shape & 5 & $\sim$5 baselines + fault runs \\
+    Topology & T0--T3 & Failure shape & 5 & $\sim$5 baselines + fault runs \\
     Routing & Direct / overlay & Liveness restoration & 5 & Paired per topology \\
     Per-hop delay & 0.5 / 5 / 20\,ms & Route-stretch cost & 5 & Overlay emphasis \\
-    Relay failure & No / yes & Fault dependency & 5 & T4 only \\
     \hline
   \end{tabular}
   \caption{Bounded evaluation matrix.}
   \label{tab:matrix}
 \end{table}
 
-The project will be considered successful if we find at least one topology where direct-only Raft loses sustained progress while transparent routing restores it, and if we can report commit-latency distributions under at least three delay settings. A stronger outcome would additionally show that failing a shared relay removes several logical paths at once. A carefully controlled negative result would also be informative---for example, if election churn dominates and routing reachability alone is not enough to stabilize progress.
+We will treat the project as successful if we find at least one topology where direct-only Raft stops making sustained progress while transparent routing restores it, and if we can report commit-latency distributions under at least three delay settings. A negative result would also be useful. For example, if election churn dominates, extra reachability alone may not be enough to stabilize the cluster.
 
-\unnumberedheading{References}
 \bibliographystyle{myIEEEtran}
 \bibliography{II2202-proposal}
 
