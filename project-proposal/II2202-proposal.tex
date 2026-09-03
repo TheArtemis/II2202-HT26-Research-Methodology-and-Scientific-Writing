@@ -91,7 +91,7 @@ We aim to experimentally characterize transparent multi-hop routing as a network
   \item \textbf{RQ2 (Latency):} How does the route stretch of quorum-critical follower paths affect Raft commit latency?
 \end{enumerate}
 
-These questions are scoped to a five-node cluster, a small set of representative topologies, and roughly 80 hours of work, which we believe is enough to obtain paired direct-vs-overlay comparisons rather than exhaustive graph enumeration.
+These questions are scoped to a five-node cluster and a small set of representative topologies, which we believe is enough to obtain paired direct-vs-overlay comparisons rather than exhaustive graph enumeration.
 
 \textbf{Hypotheses.}
 We expect transparent forwarding to restore progress when the routed graph gives a viable leader stable bidirectional paths to a majority (H1). Commit-latency overhead should follow the slowest follower needed for the fastest available majority, not the average hop count across the cluster (H2).
@@ -133,32 +133,9 @@ What we vary is the routing mode (direct versus overlay), the topology (T0--T3),
 
 \subsection{Work Procedure and Data Collection}
 
-Every run follows the same script. We start from T0, wait until there is a stable leader, collect a short baseline, then inject the chosen link failures without changing membership, and keep the workload going for the rest of the trial. Each topology is done once with direct communication and once with overlay routing. Overlay runs also sweep the three delay settings, while Raft continues to use the same peer addresses. We repeat each configuration at least five times with controlled timing and summarize the results with medians and percentile ranges.
+Every run follows the same script. We start from T0, wait until there is a stable leader, collect a short baseline, then inject the chosen link failures without changing membership, and keep the workload going for the rest of the trial. 
 
-Table~\ref{tab:plan} is a rough 80-hour plan. The topology set is deliberately small: we would rather obtain clean paired comparisons than try to enumerate every possible graph.
-
-\begin{table}[h]
-  \centering
-  \small
-  \begin{tabular}{p{5.5cm}rp{5.5cm}}
-    \hline
-    Work package & Hours & Deliverable \\
-    \hline
-    Literature review and experiment specification & 8 & Final topology set, hypotheses, metrics \\
-    Raft cluster and workload harness & 12 & Repeatable five-node baseline \\
-    Network emulation and fault injection & 12 & T0--T3 topologies in direct mode \\
-    Transparent forwarding setup & 10 & Overlay mode with controllable route stretch \\
-    Instrumentation and metric collection & 10 & Latency, commits, leader/term events \\
-    Pilot runs and debugging & 10 & Validated experiment scripts \\
-    Main experimental runs & 10 & Raw results for the bounded matrix \\
-    Analysis, plots, and report material & 8 & Figures, tables, conclusions \\
-    \hline
-    \textbf{Total} & \textbf{80} & Bounded end-to-end study \\
-    \hline
-  \end{tabular}
-  \caption{Feasibility plan (approximately 80 hours).}
-  \label{tab:plan}
-\end{table}
+Each topology is done once with direct communication and once with overlay routing. Overlay runs also sweep the three delay settings, while Raft continues to use the same peer addresses. We repeat each configuration five times with controlled timing and summarize the results with medians and percentile ranges.
 
 A single-host emulation will not capture every effect of a real multi-machine deployment. We mitigate this by injecting controlled delay and reporting how busy the host is. Results may also depend on which Raft implementation we pick and how it is tuned. We are not trying to cover all graphs; the point is to characterize the mechanism, not to enumerate every partial partition. If routing itself takes time to converge, we will either preconfigure the alternate paths and switch them on in a controlled way, or measure that setup time separately from Raft's recovery. Safety is assumed as long as the overlay still delivers reliable point-to-point messages. The experiment itself is about availability and performance.
 

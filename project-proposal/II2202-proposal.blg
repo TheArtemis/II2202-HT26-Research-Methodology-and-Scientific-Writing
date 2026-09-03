@@ -13,6 +13,7 @@ Database file #1: II2202-proposal.bib
 -- See the "IEEEtran_bst_HOWTO.pdf" manual for usage information.
 
 Done.
+<<<<<<< Updated upstream
 You've used 5 entries,
             4183 wiz_defined-function locations,
             857 strings with 8375 characters,
@@ -54,3 +55,46 @@ warning$ -- 0
 while$ -- 21
 width$ -- 6
 write$ -- 69
+=======
+You've used 3 entries,
+            4183 wiz_defined-function locations,
+            850 strings with 8201 characters,
+and the built_in function-call counts, 3081 in all, are:
+= -- 233
+> -- 65
+< -- 25
++ -- 36
+- -- 10
+* -- 161
+:= -- 453
+add.period$ -- 11
+call.type$ -- 3
+change.case$ -- 3
+chr.to.int$ -- 66
+cite$ -- 3
+duplicate$ -- 209
+empty$ -- 273
+format.name$ -- 13
+if$ -- 706
+int.to.chr$ -- 0
+int.to.str$ -- 3
+missing$ -- 36
+newline$ -- 34
+num.names$ -- 3
+pop$ -- 96
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 2
+skip$ -- 229
+stack$ -- 0
+substring$ -- 157
+swap$ -- 164
+text.length$ -- 3
+text.prefix$ -- 0
+top$ -- 5
+type$ -- 3
+warning$ -- 0
+while$ -- 15
+width$ -- 4
+write$ -- 56
+>>>>>>> Stashed changes
