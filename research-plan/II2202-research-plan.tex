@@ -1,0 +1,171 @@
+\documentclass[11pt,a4paper]{article}
+
+% Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
+% are chosen to make page density close to the corresponding Word template, 
+%so that the length of reports is the same regardless of which template is used.
+
+\usepackage[margin=1in,headheight=15pt,headsep=24pt,footskip=28pt]{geometry}
+\usepackage[default]{sourcesanspro}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{guidancetext}{HTML}{595959}
+\definecolor{guidancebg}{HTML}{F1F3F5}
+
+\setstretch{1.5}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+\raggedbottom
+
+\titleformat{\section}
+  {\fontsize{14}{16.5}\selectfont\bfseries}
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{0pt}{12pt}
+\titleformat{\subsection}
+  {\fontsize{13}{15.5}\selectfont\bfseries}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{0pt}{4pt}
+
+\newcommand{\unnumberedheading}[1]{%
+  \par\vspace{2pt}{\fontsize{14}{16.5}\selectfont\bfseries #1\par}\vspace{6pt}%
+}
+\newcommand{\reporttitle}[1]{%
+  {\fontsize{16}{19}\selectfont\bfseries #1\par}\vspace{12pt}%
+}
+\newcommand{\guidance}[1]{%
+  {\setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape #1\par}%
+  \vspace{-6pt}%
+}
+\newenvironment{guidancebox}
+  {\begin{mdframed}[backgroundcolor=guidancebg,linecolor=guidancebg,linewidth=0pt,
+    innerleftmargin=3pt,innerrightmargin=3pt,innertopmargin=2pt,innerbottommargin=2pt,
+    skipabove=6pt,skipbelow=10pt]
+   \setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape\setlength{\parskip}{6pt}}
+  {\end{mdframed}}
+\newcommand{\placeholder}[1]{#1\par}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period X}
+\fancyhead[C]{\fontsize{9}{11}\selectfont Research plan template}
+\fancyhead[R]{\fontsize{9}{11}\selectfont Insert date}
+\fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
+
+\begin{document}
+\reporttitle{[Project title]}
+\unnumberedheading{Authors}
+Student 1 <student1@kth.se>\par
+Student 2 <student2@kth.se>\par
+\vspace{2pt}
+
+\begin{guidancebox}
+\textbf{TEMPLATE GUIDANCE - DELETE BEFORE SUBMISSION.} This is a formative submission, but it is still very important as you plan your work for the rest of the course. If your plan is not well thought through, you will either end up with a weak final project report or have to do a lot of extra work to rework the plan and catch up. If your mentor has major concerns about the topic or the implementability of your research plan, you will be asked to rewrite and resubmit the plan until these issues are resolved. Revise Section 1 using feedback from the project proposal, then develop Section 2 into a detailed, implementable research method. At the end of the project, these parts will be graded under Criterion 2 (research methodology, design, and execution).\par
+\end{guidancebox}
+
+\unnumberedheading{Abstract}
+
+\guidance{Summarize the planned study concisely: context, specific problem/question, intended research method, the evidence to be collected, the planned analysis, and the intended contribution. Use the future tense where appropriate, do not present expected findings as established results, and keep the door open for alternative outcomes.}
+
+\placeholder{[Write the abstract here.]}
+
+\section{Introduction}
+
+\guidance{Revise and refine the corresponding material from the project proposal. This section should now provide a stable introductory scientific basis for the planned investigation.}
+
+\guidance{NOTE: Section 1.1 “Background, Rationale, and Related Work” of the project proposal document now splits into two narrower subsections (Section 1.1 “Background and Rationale” and Section 1.2 “Theory and Related Work” below), and you should take this opportunity to deepen the content in each of the new sections.}
+
+\subsection{Background and Rationale}
+
+\guidance{Explain the context and significance of the problem and lead the reader toward the specific research need. Remove material that is interesting but not needed to motivate the study. Include key references.}
+
+\placeholder{[Background and rationale]}
+
+\subsection{Theory and Related Work}
+
+\guidance{Synthesize the literature and theory needed to justify the research problem and method, particularly the methods from prior work that you think could be useful in your study. Compare relevant approaches and findings, identify the research gap your work addresses (without revealing how you will address it, as that comes later), and make clear how the existing literature informed the research design. Cite every factual claim that requires a source.}
+
+\placeholder{[Theory and related work]}
+
+\subsection{Research Problem, Aim, and Research Questions}
+
+\guidance{State the research problem, aims, objectives, and the planned research questions precisely. The terms “aim” and “objective” might seem synonymous, but they have different meanings in this context. Aims are high-level descriptions that explain the motivation and intentions, but are not specific or measurable. The research questions are the specific questions you want to find answers to, while the objectives are the actions to be taken in the project to answer them. Good objectives follow the SMART principle, an acronym for Specific, Measurable, Achievable, Relevant, and Time-bound. Include hypotheses only when appropriate, as each hypothesis should be a statement that can be proved to either be true or false. Convince yourself that every research question can be answered by the method described in Section 2 and that the scope is realistic within the time frame of the course.}
+
+\placeholder{[Research problem, aim, research questions, and optional hypotheses]}
+
+\section{Research Method}
+
+\guidance{Describe the planned investigation in enough detail that another student or researcher could understand what will be done, why the design is suitable for finding answers to the research questions, and how the evidence will be analyzed. This section will later serve as the basis for the corresponding section in the final report.}
+
+\subsection{Research Design and Methodological Rationale}
+
+\guidance{Identify and justify the overall research design. Explain why it can answer the research questions and discuss some alternative approaches that you have considered so far, as well as assumptions or constraints that limit the scope of your study. It is good to highlight what category your method belongs to (e.g., qualitative vs. quantitative), but the most important thing is to explain what it means in this specific project.}
+
+\placeholder{[Research design and rationale]}
+
+\subsection{Data, Materials, Participants, or Other Sources}
+
+\guidance{Describe the resources you need to use in the study to collect evidence, such as datasets, systems, simulations, measurements, documents, participants, interviewees, observations, etc. Explain selection/sampling criteria, relevant quantities (e.g., independent and dependent variables), inclusion/exclusion rules, and budgetary constraints (e.g., time, computing resources, and if something must be bought). Think through whether there are any uncertainties that could hinder you from performing these things (e.g., ensure that the dataset you need actually exists and could be used), and if there are any ethical issues that must be considered. If you need human participants, include the details on how these will be recruited and managed. Feel free to rename the subsection title to align it with the content of your report and project.}
+
+\placeholder{[Data/materials/participants/sources and selection]}
+
+\subsection{Work Procedure and Data Collection}
+
+\guidance{Describe the planned work procedure step by step at an appropriate level of detail, with the core goal of convincing yourself and the mentor that you know how the work will be done. If you later find a better way to carry out the work, you are welcome to adapt the procedures accordingly, but this description should reflect the default option. Define variables, experimental conditions, interview/observation procedures, software configurations, controls, repetitions, or other details needed to plan and understand how the evidence will be generated.}
+
+\placeholder{[Procedure and data collection]}
+
+\subsection{Data Analysis and Quality Assurance}
+
+\guidance{Explain how each type of data will be processed and analyzed, and how the analysis can lead to answers to the research questions. Define evaluation metrics, statistical tests, qualitative coding procedures, comparisons, thresholds, or any other criteria that you believe will be useful. Discuss potential issues that could affect the accuracy, precision, and generality of the data, including biases, uncontrollable randomness, and coding errors. Describe your planned mechanisms to mitigate these issues (e.g., by repetitions, tests of interview guides, random seeds) and what information must be documented to ensure reproducibility of the study.}
+
+\placeholder{[Planned data analysis and quality assurance]}
+
+\subsection{Use of AI Tools}
+
+\guidance{Describe how the group intends to use AI-assisted tools while carrying out the project, such as for literature discovery, language feedback, coding support, and data analysis. Explain how outputs will be verified and how the group will retain responsibility for the intellectual content. If no AI tools are planned to be used, it is sufficient to only state that.}
+
+\placeholder{[Planned use of AI tools]}
+
+\section{Project Planning and Feasibility}
+
+\guidance{The purpose of this section is to make the research plan concrete and actionable, so you can start your work as soon as you receive the “green light” from your mentor. This material will not be part of the final report unless it is scientifically relevant to the conducted method.}
+
+\subsection{Work Tasks and Milestones}
+
+\guidance{Describe how to carry out the research work by breaking it down into tasks that can be carried out in sequence or in parallel. You can explain with words or in a graph how these tasks are connected to each other. The completion of each task (or the most important ones) should be associated with milestones. Specify the milestones and when you plan to reach them, so you can track your progress throughout the project.}
+
+\placeholder{[Work tasks, milestones, and rough schedule]}
+
+\subsection{Allocation of Responsibilities}
+
+\guidance{Specify how the work will be divided within the group. Which work tasks from Section 3.1 are carried out jointly and which are done separately (e.g., in parallel)? How will alignment between the tasks and progress monitoring be done? Even if the work is divided among the group members, both students must be able to explain the entire project during the final examination and be actively involved in analyzing the results.}
+
+\placeholder{[Allocation of responsibilities and means of collaboration]}
+
+\subsection{Implementational Risks and Mitigation Strategies}
+
+\guidance{Describe the largest risks and uncertainties in the implementation of the project. This could be experiments that fail, high computational complexity making it hard to run algorithms, or errors in interview questions. Identify approximately three such risks and describe a mitigation strategy for each one, answering the questions: How can you minimize the risk of it happening? What is the backup plan if it indeed happens?}
+
+\placeholder{[Risks and mitigation]}
+
+\unnumberedheading{References}
+
+\guidance{List every source cited in the report and only sources that are actually used. Use one consistent citation style. Prioritize original and scientifically credible sources where available. Copy the bibliographic details from the publisher rather than trusting details generated by an AI tool. Read through the publisher’s bibliographic details, as there are frequent errors, such as missing capitalization, repetitions of the year, and conference abbreviations.}
+
+\placeholder{[References]}
+
+\unnumberedheading{Appendix/Appendices (Optional)}
+
+\guidance{Use appendices for supporting material such as detailed parameter lists, questionnaires/interview guides, or additional methodological details. Call this part Appendix if there is only one section, while you should call it Appendices if there are multiple sections.}
+
+\placeholder{[Optional appendix material]}
+
+\end{document}
