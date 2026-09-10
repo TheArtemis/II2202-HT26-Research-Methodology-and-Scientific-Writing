@@ -13,6 +13,7 @@
 \usepackage{fancyhdr}
 \usepackage{lastpage}
 \usepackage{microtype}
+\usepackage{graphicx}
 \usepackage[hidelinks]{hyperref}
 \usepackage[numbers,sort&compress]{natbib}
 \renewcommand{\bibsection}{\unnumberedheading{\refname}}
@@ -126,19 +127,45 @@ We expect transparent forwarding to restore progress in the tested topologies wh
 
 \section{Research Method}
 
-\guidance{Describe the planned investigation in enough detail that another student or researcher could understand what will be done, why the design is suitable for finding answers to the research questions, and how the evidence will be analyzed. This section will later serve as the basis for the corresponding section in the final report.}
-
 \subsection{Research Design and Methodological Rationale}
 
-\guidance{Identify and justify the overall research design. Explain why it can answer the research questions and discuss some alternative approaches that you have considered so far, as well as assumptions or constraints that limit the scope of your study. It is good to highlight what category your method belongs to (e.g., qualitative vs. quantitative), but the most important thing is to explain what it means in this specific project.}
+We plan to answer both research questions through quantitative experiments in an emulated network. What we vary is the communication mode: direct-only communication or transparent multi-hop forwarding. For each topology and delay, both communication modes will use the same Raft implementation, failed links, workload, fault timing, and configuration. Repeating the same conditions will help account for variation in election timing, message scheduling, and host load.
 
-\placeholder{[Research design and rationale]}
+For RQ1, we will observe whether Raft maintains or recovers stable commit progress in each topology. T0 provides a healthy baseline, while T1 is a control case in which the leader keeps a direct quorum after a link failure. T2--T4 represent the quorum-loss, constrained-election, and chained-connectivity failures. Running each scenario with and without forwarding will show in which cases forwarding restores progress.
 
-\subsection{Data, Materials, Participants, or Other Sources}
+For RQ2, we will repeat the comparisons with per-link delays of 0.5, 5, and 20\,ms. We will then compare the client-observed commit latency when a forwarded path is needed to form the deciding majority. T1 also provides a useful control for this question because the leader can still form a majority through direct links.
 
-\guidance{Describe the resources you need to use in the study to collect evidence, such as datasets, systems, simulations, measurements, documents, participants, interviewees, observations, etc. Explain selection/sampling criteria, relevant quantities (e.g., independent and dependent variables), inclusion/exclusion rules, and budgetary constraints (e.g., time, computing resources, and if something must be bought). Think through whether there are any uncertainties that could hinder you from performing these things (e.g., ensure that the dataset you need actually exists and could be used), and if there are any ethical issues that must be considered. If you need human participants, include the details on how these will be recruited and managed. Feel free to rename the subsection title to align it with the content of your report and project.}
+We considered modifying Raft or using another consensus protocol such as Omni-Paxos. Such an approach could improve resilience, but it would answer a different question because the consensus protocol itself would change. We also decided not to use the Nifty implementation. Its failure detection and route discovery would make it harder to separate the effect of multi-hop communication from the time needed to discover and install a route. Instead, we will preconfigure Linux forwarding and focus on the effect of path availability and delay.
 
-\placeholder{[Data/materials/participants/sources and selection]}
+A physical multi-machine testbed would more closely represent a real deployment. However, a single-host network emulator makes it easier to reproduce the same topology, delay, and failure timing across runs. This setup does not capture every effect of a real multi-machine deployment and does not measure routing convergence. The results may also depend on the selected Raft implementation and the tested topologies. We therefore aim to characterize the mechanism in these defined conditions rather than generalize the results to every Raft deployment or partial network partition.
+
+\subsection{Experimental Platform, Conditions, and Evidence}
+
+We plan to use HashiCorp Raft as the consensus implementation~\cite{hashicorp_raft}. The same implementation will be used in both communication modes, and Raft itself will not select or manage the multi-hop routes. If additional measurement instrumentation is needed after the pilot, it will be documented and applied in the same way in both modes.
+
+We plan to build the network using Mininet 2.3.0~\cite{lantz2010mininet,mininet230}. Each Mininet host will run one Raft replica with a stable address. Mininet will create the links, apply delay, and inject the planned link failures. In direct-only mode, Raft nodes will only communicate over their surviving direct links. In forwarding mode, preconfigured Linux routes and IP forwarding will carry the same traffic through intermediate nodes. Raft will continue to use the same peer addresses in both modes.
+
+The complete experiment will run on a standard Linux virtual machine. The exact processor, number of virtual CPUs, amount of memory, Linux distribution, and kernel version have not yet been selected. We will fix and report these details before running the main experiments. We will also monitor the host load to check that competition for resources does not dominate the results.
+
+Figure~\ref{fig:topologies} shows the five topologies that we plan to test. All links in the figure are bidirectional. T0 uses five fully connected nodes and provides the healthy baseline. T1 removes the link between C and E, but leader C can still communicate directly with a majority.
+
+T2 uses five nodes with A as the only node connected directly to a majority. The initial leader C can reach A but cannot reach a majority directly. T3 isolates the initial leader C, while A remains connected to B, D, and E. The initial logs are A=$[1,1]$, B=$[1,1,2]$, C=$[1,1,2,2]$, D=$[1,1,2]$, and E=$[1,1]$. This makes A the only quorum-connected candidate, although B and D have newer logs.
+
+T4 uses three nodes connected as the chain B--A--C, with B as the initial leader and no direct link between B and C. This is the chained scenario evaluated by Ng et al.~\cite[Sec.~7.2, pp.~124--126]{ng2023omnipaxos}. In forwarding mode, B and C will communicate through A without adding or repairing a physical link.
+
+What we vary is the communication mode, the topology, and the per-link delay. We will collect client request and commit timestamps, client-observed commit latency, recovery time, commit activity over time, and leader and term changes. One open-loop client will submit requests independently of the completion of previous requests. The request rate, entry size, timeout, and exact schedule will be fixed after the pilot and then kept the same for all main runs. Client-side timestamps will record submissions and commit confirmations, while Raft event records will provide information about leaders, terms, and commits. During the pilot, we will determine whether the existing logs and observer interfaces provide all the required information or whether additional instrumentation is needed.
+
+The planned evaluation contains five topologies, two communication modes, three delay settings, and 20 repetitions of each condition. This gives a target of 600 runs. We will first automate five pilot runs for each condition to estimate the variability and total running time. Based on the pilot, we will confirm whether 20 repetitions are feasible or adjust the number before collecting the remaining data. Pilot runs will be included in the final data only if the experimental procedure and implementation remain unchanged.
+
+The study does not involve human participants or personal data, and all required software is open source. Therefore, we do not expect any participant-related ethical issues or any need to purchase data. The main resource uncertainty is the size of the virtual machine, which will be selected before the main experiments.
+
+\begin{figure}[p]
+  \centering
+  \includegraphics[width=0.94\textwidth]{figures/topology-scenarios.png}
+  \caption{Planned direct-only and transparent-forwarding conditions. Solid links remain available, dashed links have failed, and blue paths show forwarding over surviving links.}
+  \label{fig:topologies}
+\end{figure}
+\clearpage
 
 \subsection{Work Procedure and Data Collection}
 
@@ -160,25 +187,43 @@ We expect transparent forwarding to restore progress in the tested topologies wh
 
 \section{Project Planning and Feasibility}
 
-\guidance{The purpose of this section is to make the research plan concrete and actionable, so you can start your work as soon as you receive the “green light” from your mentor. This material will not be part of the final report unless it is scientifically relevant to the conducted method.}
-
 \subsection{Work Tasks and Milestones}
 
-\guidance{Describe how to carry out the research work by breaking it down into tasks that can be carried out in sequence or in parallel. You can explain with words or in a graph how these tasks are connected to each other. The completion of each task (or the most important ones) should be associated with milestones. Specify the milestones and when you plan to reach them, so you can track your progress throughout the project.}
+The work will be divided into five ordered stages. We do not assign calendar dates at this point, but each stage ends with a milestone that must be completed before the dependent work begins.
 
-\placeholder{[Work tasks, milestones, and rough schedule]}
+\textbf{Stage 1: Finalize the experimental protocol.}
+We will define the remaining workload parameters, trial timing, measurement rules, and exclusion criteria. We will also fix the virtual-machine configuration and record the software and system settings. The first milestone is a complete experiment specification that can be applied without making new decisions during data collection.
+
+\textbf{Stage 2: Build and validate the testbed.}
+The HashiCorp Raft cluster, open-loop client, Mininet topologies, forwarding rules, failure injection, and data collection will be implemented. Unit-level checks will first verify the individual components. The components will then be combined in the three-node forwarding pilot. The second milestone is a testbed that reproduces the planned direct-only and forwarding conditions and records the required measurements.
+
+\textbf{Stage 3: Conduct the pilot and freeze the procedure.}
+We will automate five pilot runs for every experimental condition. The pilot will be used to detect implementation problems, estimate variability and total running time, and decide whether the target of 20 repetitions remains feasible. Any resulting changes will be made before the procedure is frozen. The third milestone is a validated final procedure and a justified repetition count.
+
+\textbf{Stage 4: Collect and analyze the main data.}
+We will execute the remaining runs in batches. Connectivity, delay, and host load will be checked for every batch, and each run will retain its configuration and random seed. After validating the collected data, we will analyze liveness and recovery for RQ1 and commit latency for RQ2. The fourth milestone is a complete, quality-checked dataset with results for both research questions.
+
+\textbf{Stage 5: Report and reproduce the study.}
+We will interpret the results, discuss limitations and alternative outcomes, and complete the final report. The experiment scripts, configurations, raw data, and analysis procedure will be organized so that the study can be reproduced. The final milestone is a reviewed report and its supporting experimental artifacts.
 
 \subsection{Allocation of Responsibilities}
 
-\guidance{Specify how the work will be divided within the group. Which work tasks from Section 3.1 are carried out jointly and which are done separately (e.g., in parallel)? How will alignment between the tasks and progress monitoring be done? Even if the work is divided among the group members, both students must be able to explain the entire project during the final examination and be actively involved in analyzing the results.}
+The implementation work will be divided into two connected parts. Lorenzo will lead the Raft, client-workload, and measurement components. Juozas will lead the Mininet topologies, routing configuration, delay control, and failure injection. Each person will review and test the other part before the components are combined. The pilot and the final integration of the testbed will be carried out jointly.
 
-\placeholder{[Allocation of responsibilities and means of collaboration]}
+The analysis will also be divided while keeping both group members involved. Lorenzo will lead the liveness, recovery, and election analysis for RQ1. Juozas will lead the commit-latency analysis for RQ2. Both will inspect the complete dataset, verify the analysis produced by the other person, and interpret the results together. This division gives each person primary responsibility for one implementation area and one analysis area without separating either person from the complete study.
+
+Writing will follow the same division for the first drafts, while the research method, discussion, conclusions, and final revision will be completed jointly. Progress will be tracked through the milestones in Section 3.1, regular short meetings, and shared issues in the project repository. All code and report changes will be reviewed by the other group member. Both authors will therefore remain able to explain the experimental setup, analysis, and conclusions.
 
 \subsection{Implementational Risks and Mitigation Strategies}
 
-\guidance{Describe the largest risks and uncertainties in the implementation of the project. This could be experiments that fail, high computational complexity making it hard to run algorithms, or errors in interview questions. Identify approximately three such risks and describe a mitigation strategy for each one, answering the questions: How can you minimize the risk of it happening? What is the backup plan if it indeed happens?}
+\textbf{Incorrect network isolation or forwarding.}
+A configuration error could allow traffic to bypass a failed link or prevent a planned forwarded path from working. We will first test the three-node chained topology and verify reachability and end-to-end delay before every experimental batch. If a validation fails, the batch will not begin until the routes and failure rules have been corrected. Runs affected by an undetected configuration error will be excluded according to a predefined rule and repeated from a clean state.
 
-\placeholder{[Risks and mitigation]}
+\textbf{The expected Raft failure does not appear.}
+HashiCorp Raft may behave differently from the protocol model because of its implementation details or election timing. We will verify the initial leader, connectivity, and log state before injecting each failure, and we will use repeated runs and recorded seeds to distinguish consistent behaviour from timing variation. If a topology still does not produce the expected failure after the setup has been validated, the result will be reported as a negative finding rather than changing the topology after data collection.
+
+\textbf{Host contention affects the measurements.}
+Running all replicas, the client, and Mininet on one virtual machine may introduce CPU or memory contention that hides the effect of network delay. We will run trials sequentially, keep the VM configuration fixed, and monitor host load. We will define an overload threshold before the main experiment. If a batch exceeds this threshold, we will move to a larger VM or reduce the offered workload and repeat the complete affected batch under one fixed configuration.
 
 \bibliographystyle{myIEEEtran}
 \bibliography{II2202-research-plan}
