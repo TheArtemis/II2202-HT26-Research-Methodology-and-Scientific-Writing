@@ -3,8 +3,9 @@
 The experiments compare direct communication with transparent multi-hop
 forwarding under the same network conditions. All links shown are bidirectional.
 Solid links remain available after fault injection; dashed links have failed.
-Blue paths show logical communication provided by the overlay over those
-surviving links; they do not represent repaired or additional physical links.
+Blue paths show logical multi-hop communication provided by Linux routing and
+IP forwarding over those surviving links; they do not represent repaired or
+additional physical links.
 
 The five-node scenarios use the same pentagonal node arrangement as
 Omni-Paxos: A is on the left, B at the top, C on the right, and D and E at the
@@ -42,8 +43,8 @@ bottom.
   from A but cannot communicate directly with a majority.
 - **Purpose:** Test whether forwarding restores progress when the existing
   leader loses its direct quorum despite the graph remaining connected.
-- **Expected behaviour:** Direct-only Raft may stall; overlay forwarding should
-  restore paths from the leader to a majority.
+- **Expected behaviour:** Direct-only Raft may stall; transparent forwarding
+  should restore paths from the leader to a majority.
 - **Origin:** Omni-Paxos quorum-loss scenario.
 
 ## T3 — Constrained election
@@ -59,7 +60,7 @@ bottom.
 - **Purpose:** Test whether forwarding enables a viable election when
   connectivity and Raft's log-freshness voting rule favour different nodes.
 - **Expected behaviour:** Direct-only Raft may fail to elect a leader that can
-  make progress; overlay forwarding should restore stable progress.
+  make progress; transparent forwarding should restore stable progress.
 - **Origin:** Omni-Paxos outdated-log/constrained-election scenario.
 
 ## T4 — Chained connectivity
@@ -73,8 +74,8 @@ bottom.
 - **Purpose:** Test whether forwarding prevents repeated elections caused by
   the two endpoint nodes being unable to hear one another directly.
 - **Expected behaviour:** Direct-only Raft may alternate elections and terms;
-  overlay forwarding should allow B and C to communicate through A and stabilize
-  the cluster.
+  transparent forwarding should allow B and C to communicate through A and
+  stabilize the cluster.
 - **Origin:** Omni-Paxos chained scenario. The original paper and experiment use
   three nodes for this case.
 
@@ -82,5 +83,5 @@ bottom.
 
 See the [topology figure](../figures/topology-scenarios.pdf). T0 and T1 are
 project controls; T2--T4 reproduce the corresponding Omni-Paxos topology
-shapes. Each row compares direct-only communication with overlay forwarding
+shapes. Each row compares direct-only communication with transparent forwarding
 while keeping the failed-link graph unchanged.

@@ -62,7 +62,7 @@
 
 \node[heading] at (-3,11.15) {Direct communication only};
 \node[note] at (-3,10.84) {Raft uses only surviving direct links};
-\node[heading] at (3,11.15) {With transparent overlay};
+\node[heading] at (3,11.15) {With transparent forwarding};
 \node[note] at (3,10.84) {same failures; blue paths are forwarded};
 
 % T0 -------------------------------------------------------------------------
@@ -207,7 +207,7 @@
 \draw[failed] (-3.65,-10.35)--(-2.75,-10.35);
 \node[anchor=west,note] at (-2.55,-10.35) {failed direct link};
 \draw[route,shorten <=0pt,shorten >=0pt] (0.45,-10.35)--(1.35,-10.35);
-\node[anchor=west,note] at (1.55,-10.35) {overlay-carried path};
+\node[anchor=west,note] at (1.55,-10.35) {forwarded multi-hop path};
 \node[leader,minimum size=5.5mm] at (5.25,-10.35) {L};
 \node[anchor=west,note] at (5.65,-10.35) {leader before failure};
 

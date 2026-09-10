@@ -58,9 +58,47 @@ If the exact experimental version is later archived in a repository that
 assigns a DOI, prefer the archived software citation and DOI while retaining
 the GitHub URL as supporting information.
 
+## Network emulation and transparent forwarding
+
+- **Status:** Fixed
+- **Network emulator:** Mininet
+- **Repository:** <https://github.com/mininet/mininet>
+- **Link emulator:** Mininet traffic-controlled links (`TCLink`).
+- **Forwarding mechanism:** Preconfigured Linux routes and IP forwarding inside
+  the Mininet hosts.
+- **Role in the study:** Mininet will provide the complete controlled network
+  testbed. Each Mininet host will run one HashiCorp Raft replica. Mininet will
+  create the predefined links, inject link failures, and apply controlled
+  per-link delay.
+- **Link control:** `TCLink` will define delay and any other selected link
+  properties. The same link parameters and failure schedule will be used in
+  paired direct-only and forwarding runs.
+- **Node identity:** Each Raft replica will use a stable address that does not
+  change when the path to that replica changes.
+- **Direct-only condition:** A replica may communicate only over its surviving
+  direct links. Intermediate Mininet hosts do not forward Raft traffic.
+- **Forwarding condition:** Preconfigured Linux routes and IP forwarding inside
+  the Mininet hosts will carry Raft traffic over surviving multi-hop paths.
+  HashiCorp Raft will continue using the same peer addresses and will not be
+  modified to select or manage routes.
+- **Controlled comparison:** Routing mode is the treatment. The Raft
+  implementation, topology, failed links, delay, workload, and fault timing
+  remain fixed within each pair of runs.
+
+NIFTY will remain part of the related work and motivation, but its implementation
+will not be used in the experiment. This keeps the study focused on the causal
+effect of transparent multi-hop forwarding rather than NIFTY's failure-detection
+or route-convergence behaviour.
+
+Before the main experiment, a pilot using the three-node chained topology must
+verify that B cannot reach C in direct-only mode, that B can reach C through A
+when forwarding is enabled, and that the configured per-link delay is reflected
+in the end-to-end path.
+
 ## Decisions still to be fixed
 
-- Network emulation and transparent forwarding mechanism.
+- Exact Mininet version or commit.
+- Exact Mininet topology, interface, address, and routing configuration.
 - Raft configuration, including heartbeat, election, commit, and lease
   timeouts; snapshot and log-store settings; and transport configuration.
 - Mapping between topology node labels and Raft server IDs/addresses.
