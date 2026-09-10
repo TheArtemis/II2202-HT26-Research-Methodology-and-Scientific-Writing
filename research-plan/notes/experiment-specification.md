@@ -5,6 +5,9 @@ decision marked **fixed** should be reflected consistently in the report,
 experiment configuration, and run metadata. Items marked **to be fixed** must
 be decided before the main experiment begins.
 
+Measurement terminology and its attribution to the main reference are recorded
+in [`measurement-vocabulary.md`](measurement-vocabulary.md).
+
 ## Raft implementation
 
 - **Status:** Fixed
