@@ -63,6 +63,10 @@ the GitHub URL as supporting information.
 - **Status:** Fixed
 - **Network emulator:** Mininet
 - **Repository:** <https://github.com/mininet/mininet>
+- **Version:** `2.3.0`, the latest official stable release available on
+  10 September 2026.
+- **Commit:** `d7f399d7a1200b602bd6a95ae88bae1009664d4a`
+- **Release:** <https://github.com/mininet/mininet/releases/tag/2.3.0>
 - **Link emulator:** Mininet traffic-controlled links (`TCLink`).
 - **Forwarding mechanism:** Preconfigured Linux routes and IP forwarding inside
   the Mininet hosts.
@@ -95,14 +99,66 @@ verify that B cannot reach C in direct-only mode, that B can reach C through A
 when forwarding is enabled, and that the configured per-link delay is reflected
 in the end-to-end path.
 
+## Execution host
+
+- **Status:** Partially fixed
+- **Environment:** A single standard Linux virtual machine will host Mininet,
+  all Raft replicas, and the client.
+- **Specifications:** The VM's vCPU count, memory, Linux distribution and
+  version, kernel version, and underlying processor are not fixed yet. The
+  selected values must be recorded before the experiment and included in the
+  run metadata and final report.
+
+## Workload
+
+- **Status:** Partially fixed
+- **Clients:** One client.
+- **Model:** Open-loop; request submission is scheduled independently of the
+  completion of earlier requests.
+- **To be fixed later:** Request rate, entry size, request timeout, trial
+  duration, warm-up duration, failure-injection and recovery schedule, and
+  random seeds.
+
+## Experimental matrix and repetitions
+
+- **Status:** Fixed, subject to the pilot rule below
+- **Topologies:** Five (`T0`--`T4`).
+- **Routing modes:** Two (direct-only and transparent forwarding).
+- **Per-link delays:** Three (0.5, 5, and 20 ms).
+- **Target repetitions:** 20 independent repetitions per condition.
+- **Target size:** `5 topologies x 2 routing modes x 3 delays x 20
+  repetitions = 600 runs`.
+
+Twenty repetitions per condition is a defensible starting target, not a
+guarantee of statistical power. The experiment harness will first automate five
+pilot runs per condition to estimate variability and total execution time. The
+target of 20 repetitions will then be confirmed or revised before the remaining
+runs are collected, and the decision and its rationale will be documented. The
+pilot runs may be included among the 20 repetitions only if the experimental
+protocol and implementation remain unchanged after the pilot.
+
+## Quality assurance
+
+- Run the three-node forwarding pilot described above before the main
+  experiment.
+- Validate connectivity and configured delay before every experimental batch.
+- Start each run from a clean state or restore the required log state through a
+  reproducible procedure.
+- Record random seeds and complete run metadata.
+- Monitor host load during every run.
+- Define failed-run and data-exclusion rules before collecting the main
+  experimental data.
+
 ## Decisions still to be fixed
 
-- Exact Mininet version or commit.
-- Exact Mininet topology, interface, address, and routing configuration.
-- Raft configuration, including heartbeat, election, commit, and lease
-  timeouts; snapshot and log-store settings; and transport configuration.
-- Mapping between topology node labels and Raft server IDs/addresses.
-- Workload, trial duration, failure-injection schedule, repetitions, and random
-  seeds.
+- VM specifications.
+- Request rate, entry size, request timeout, trial duration, warm-up duration,
+  failure-injection and recovery schedule, and random seeds.
 - Measurement sources, output schema, and operational definitions of liveness,
   recovery, and commit latency.
+
+The research plan will not prescribe the low-level Mininet interface/address
+configuration, individual HashiCorp Raft timeout and storage settings, or the
+mapping between topology labels and server addresses. These implementation
+details will be defined by the experiment harness and recorded with the
+experiment artifacts rather than treated as experimental factors.
