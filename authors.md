@@ -1,2 +1,2 @@
 Lorenzo Deflorian (ldef@kth.se)
-Juozas Skarbalius
+Juozas Skarbalius (juozas@kth.se)
