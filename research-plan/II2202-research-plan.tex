@@ -92,9 +92,9 @@ Raft's communication model assumes direct point-to-point exchanges between parti
 
 Prior work has examined partial network partitions from several angles. Jensen et al.~\cite[Sec.~4, Figs.~5--9]{jensen2021raft} studied etcd's Raft implementation under partial network failures and showed that implementation-specific optimizations change its election and request-handling behaviour. Their experiments demonstrate election instability and delayed requests in several partition scenarios. They identify overlay networks as a possible solution that could reroute traffic between two replicas through a third, but do not implement or evaluate that approach for Raft~\cite[Sec.~5]{jensen2021raft}.
 
-Alfatafta et al.~\cite[Sec.~6]{alfatafta2020nifty} introduced Nifty, a transparent communication layer that monitors connectivity and detours packets around failed paths through bridge nodes. Their evaluation shows that Nifty can mask partial partitions with low failure-free overhead in six data-centric systems~\cite[Secs.~7.1--7.2]{alfatafta2020nifty}. However, the evaluated systems do not include a Raft deployment, so the study does not establish when routed paths restore Raft progress or how additional hops affect Raft commit latency.
+Alfatafta et al.~\cite[Sec.~6]{alfatafta2020nifty} introduced Nifty, a transparent communication layer that monitors connectivity and detours packets around failed paths through bridge nodes. Their evaluation shows that Nifty can mask partial partitions with low failure-free overhead in six data-centric systems~\cite[Secs.~7.1--7.2]{alfatafta2020nifty}. However, the evaluated systems do not include a Raft deployment, so the study does not establish when routed paths restore Raft progress or how added path delay affects Raft commit latency.
 
-Omni-Paxos takes a different approach by changing the consensus protocol itself to handle partial connectivity. Ng, Haridi, and Carbone~\cite[Sec.~3]{ng2023omnipaxos} define quorum connectivity and show how established leader-based protocols can deadlock or livelock when no suitable leader can be elected or maintained despite residual network connectivity. Omni-Paxos separates leader election from log replication so that leader selection can focus on connectivity. The authors also discuss transparent overlay routing as a general alternative, but argue qualitatively that extra dissemination-path dependencies and network hops may reduce fault tolerance and performance~\cite[Sec.~9]{ng2023omnipaxos}. They do not experimentally compare Raft with and without such an overlay.
+Omni-Paxos takes a different approach by changing the consensus protocol itself to handle partial connectivity. Ng, Haridi, and Carbone analyze how established leader-based protocols can deadlock or livelock when no suitable leader can be elected or maintained despite residual network connectivity~\cite[Sec.~2, p.~117]{ng2023omnipaxos}. They define quorum-connected leader election and separate leader election from log replication so that leader selection can focus on connectivity~\cite[Sec.~5.1, p.~121]{ng2023omnipaxos}. The authors also discuss transparent overlay routing as a general alternative, but argue qualitatively that extra dissemination-path dependencies and network delay may reduce fault tolerance and performance~\cite[Sec.~8, p.~127]{ng2023omnipaxos}. They do not experimentally compare Raft with and without such an overlay.
 
 Together, these studies establish that partial connectivity can disrupt Raft-like protocols and that transparent routing can mask partial partitions in other systems. They do not, however, provide an experimental characterization of the topologies in which transparent multi-hop routing restores Raft progress or of the commit-latency cost when routed followers are needed to form a quorum. This missing evaluation is the research gap that will be addressed by this proposed study.
 
@@ -109,20 +109,20 @@ We aim to experimentally characterize transparent multi-hop routing as a network
 \textbf{Objectives.}
 During the course project, we will:
 \begin{enumerate}
-  \item construct a controlled five-node Raft setup that can reproduce a healthy baseline and four predefined partial-connectivity topologies;
+  \item construct controlled three- and five-node Raft configurations that can reproduce a healthy baseline and four predefined partial-connectivity topologies;
   \item compare direct communication with transparent multi-hop routing using repeated trials and run-level measurements of commit progress, recovery, elections, and term changes;
-  \item quantify client-observed commit latency under controlled per-hop delays and route lengths; and
+  \item quantify client-observed commit latency under controlled per-link delay settings; and
   \item document the implementation, configurations, experimental procedure, and analysis required to reproduce the study.
 \end{enumerate}
 
 \textbf{Research questions.}
 \begin{enumerate}
   \item \textbf{RQ1 (Liveness):} Across the predefined T1--T4 partial-connectivity topologies---a non-critical cut, quorum-loss, constrained election, and chained connectivity---in which cases does transparent multi-hop routing restore stable Raft progress compared with direct communication only?
-  \item \textbf{RQ2 (Latency):} How do additional network hops on quorum-critical follower paths affect client-observed Raft commit latency under the predefined per-hop delay settings?
+  \item \textbf{RQ2 (Latency):} How does added per-link delay on transparent multi-hop paths affect client-observed Raft commit latency when a follower reached through such a path belongs to the deciding majority?
 \end{enumerate}
 
 \textbf{Hypotheses.}
-We expect transparent forwarding to restore progress in the tested topologies where the routed graph gives a viable leader stable bidirectional paths to a majority (H1). We expect commit-latency overhead to follow the additional round-trip delay of the slowest follower required by the fastest available majority, rather than the average hop count across the cluster (H2).
+We expect transparent forwarding to restore progress in the tested topologies where the routed graph gives a viable leader stable bidirectional paths to a majority (H1). We expect commit latency to increase with the additional round-trip delay of a forwarded path when a follower on that path is required to complete the deciding majority, while little or no increase is expected when the leader retains a sufficient direct quorum (H2).
 
 \section{Research Method}
 
