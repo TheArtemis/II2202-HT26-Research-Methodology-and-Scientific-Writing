@@ -15,3 +15,5 @@
 *.fls
 *.bbl
 *.blg
+
+!/data/*.pdf
