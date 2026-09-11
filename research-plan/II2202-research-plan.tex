@@ -14,6 +14,7 @@
 \usepackage{lastpage}
 \usepackage{microtype}
 \usepackage{graphicx}
+\usepackage{booktabs}
 \usepackage[hidelinks]{hyperref}
 \usepackage[numbers,sort&compress]{natbib}
 \renewcommand{\bibsection}{\unnumberedheading{\refname}}
@@ -69,15 +70,16 @@ Lorenzo Deflorian <ldef@kth.se>\par
 Juozas Skarbalius <juozas@kth.se>\par
 \vspace{2pt}
 
-\begin{guidancebox}
-\textbf{TEMPLATE GUIDANCE - DELETE BEFORE SUBMISSION.} This is a formative submission, but it is still very important as you plan your work for the rest of the course. If your plan is not well thought through, you will either end up with a weak final project report or have to do a lot of extra work to rework the plan and catch up. If your mentor has major concerns about the topic or the implementability of your research plan, you will be asked to rewrite and resubmit the plan until these issues are resolved. Revise Section 1 using feedback from the project proposal, then develop Section 2 into a detailed, implementable research method. At the end of the project, these parts will be graded under Criterion 2 (research methodology, design, and execution).\par
-\end{guidancebox}
-
 \unnumberedheading{Abstract}
+Distributed systems utilize consensus protocols to find agreement on a shared state. 
+Raft - one of such protocols - is a leader-based consensus protocol.
+In order for Raft to make progress, it needs to be able to communicate with a majority quorum via P2P links. 
+However, in partial network topologies, some of the links may fail, causing the leader to lose contact with such quorum.
+In this case, the leader may not be able tocontinue making progress, and in certain topologies, unable to elect next leader.
 
-\guidance{Summarize the planned study concisely: context, specific problem/question, intended research method, the evidence to be collected, the planned analysis, and the intended contribution. Use the future tense where appropriate, do not present expected findings as established results, and keep the door open for alternative outcomes.}
-
-\placeholder{[Write the abstract here.]}
+One of the proposed solutions to this problem by the state-of-the-art is to use network overlays on top of the existing consensus protocol.
+However, such solution is not sufficiently evaluated by prior work in the context of Raft.
+This research plan proposes to evaluate the effect of multi-hop routing on Raft's liveliness and latency.
 
 \section{Introduction}
 
@@ -226,22 +228,92 @@ Therefore, we do not expect any participant-related ethical issues or any need t
 \clearpage
 
 \subsection{Work Procedure and Data Collection}
+Before defining the experiment procedure, we will first define the variables that we control (independent variables) and the variables that we attempt to measure (dependent variables).
+Tables~\ref{tab:independent-variables} and~\ref{tab:dependent-variables} summarize these variables and their levels or definitions.
 
-\guidance{Describe the planned work procedure step by step at an appropriate level of detail, with the core goal of convincing yourself and the mentor that you know how the work will be done. If you later find a better way to carry out the work, you are welcome to adapt the procedures accordingly, but this description should reflect the default option. Define variables, experimental conditions, interview/observation procedures, software configurations, controls, repetitions, or other details needed to plan and understand how the evidence will be generated.}
+\begin{table}[htbp]
+  \centering
+  \caption{Independent variables.}
+  \label{tab:independent-variables}
+  \begin{tabular}{ll}
+    \toprule
+    Independent variable & Level \\
+    \midrule
+    Communication mode & Point-to-Point (P2P) RPC, Multi-hop RPC forwarding \\
+    Topology & T0--T4 \\
+    Per-link delay & 0.5, 5, 20\,ms \\
+    Raft heartbeat interval & 1, 10, 500\,ms \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\placeholder{[Procedure and data collection]}
+\begin{table}[htbp]
+  \centering
+  \caption{Dependent variables.}
+  \label{tab:dependent-variables}
+  \begin{tabular}{lll}
+    \toprule
+    Dependent variable & RQ & Definition \\
+    \midrule
+    Commit throughput & RQ1 & Committed and appended entries per second \\
+    Recovery time & RQ1 & Time from failure to first subsequent commit \\
+    Number of elections & RQ1 & Count during the observation window \\
+    Number of term changes & RQ1 & Count during the observation window \\
+    Commit latency & RQ2 & Client request-response delay \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Each experiment for a set of independent variables will proceed as follows:
+\begin{enumerate}
+  \item Start a clean Mininet topology for the chosen T0--T4 scenario and apply the chosen per-link delay to all surviving links.
+  \item For each communication mode (P2P and multi-hop forwarding) and repeat 20 times:
+  \begin{enumerate}
+    \item Configure and start the Raft replicas with the planned initial leader and heartbeat interval.
+    \item Start the open-loop client.
+    \item Wait for couple of seconds and verify that the cluster is initially healthy and commits are succeeding.
+    \item Induce partial network partitions by failing previously planned links of the current tested topology.
+    \item Stop the client and replicas, archive all logs and measurement files under a unique run identifier, and tear down Mininet before the next run.
+  \end{enumerate}
+\end{enumerate}
+
+\textbf{Data collection.}
+Client-side records will store request identifiers, submission timestamps, and commit-confirmation timestamps.
+Raft event records will store leader identity, term changes, and commit events, election timestamps.
+All raw outputs will be written to files named by condition and repetition so that they can be joined into a single analysis dataset without manual transcription.
 
 \subsection{Data Analysis and Quality Assurance}
 
-\guidance{Explain how each type of data will be processed and analyzed, and how the analysis can lead to answers to the research questions. Define evaluation metrics, statistical tests, qualitative coding procedures, comparisons, thresholds, or any other criteria that you believe will be useful. Discuss potential issues that could affect the accuracy, precision, and generality of the data, including biases, uncontrollable randomness, and coding errors. Describe your planned mechanisms to mitigate these issues (e.g., by repetitions, tests of interview guides, random seeds) and what information must be documented to ensure reproducibility of the study.}
+\textbf{RQ1 analysis.}
+For each topology and communication mode we will classify a run as making stable progress if the cluster commits new entries throughout the post-failure observation window after at most a bounded recovery period, without sustained election churn.
+We will report the fraction of runs that meet this criterion, the distribution of recovery times among successful recoveries, and summary counts of elections and term changes.
+The primary comparison is direct-only versus forwarding within each topology.
+T0 and T1 serve as sanity checks: both modes should remain live in T0, and direct-only should already remain live in T1.
+Answers to RQ1 will therefore be stated as the set of topologies among T2--T4 in which forwarding restores stable progress relative to direct-only communication under the same delay and workload.
 
-\placeholder{[Planned data analysis and quality assurance]}
+\textbf{RQ2 analysis.}
+For each completed request we will compute commit latency from the client timestamps.
+We will summarize latency with the median and selected upper percentiles (for example, the 95th percentile) within each condition, and we will compare forwarding against direct-only at each delay setting.
+The analysis will distinguish cases in which a forwarded follower is required to form the deciding majority from control cases such as T1, where the leader retains a direct quorum.
+If forwarding restores progress in a topology where direct-only does not, the latency characterization for that topology will be reported for the forwarding mode alone, together with the corresponding path delay.
+We will use non-parametric comparisons across repeated runs (for example, Wilcoxon rank-sum tests on per-run median latency, with effect sizes) rather than relying only on visual inspection, and we will report confidence intervals for the main latency summaries.
+
+\textbf{Threats to validity and mitigation.}
+Election timing, message scheduling, and host contention introduce run-to-run variability that could obscure the effect of forwarding or delay.
+We will mitigate this by repeating each condition, recording seeds, running trials sequentially, and monitoring host load against a predefined overload threshold.
+Configuration errors could allow traffic to bypass a failed link or prevent a planned forwarded path from working; batch-level connectivity and delay checks, together with predefined exclusion and rerun rules, are intended to limit such contamination.
+Measurement clock skew between client timestamps and Raft logs could distort latency if clocks are not aligned; we will prefer client-side submission and confirmation timestamps for RQ2 and cross-check commit events against Raft records for consistency rather than mixing clocks unnecessarily.
+Implementation-specific behaviour in HashiCorp Raft may differ from Raft theoretical model; we will document the library version and configuration, and we will treat unexpected negative findings as results rather than altering topologies after data collection.
+External validity is limited to the emulated Mininet setting, the chosen topologies, and the selected delays; we will state these bounds explicitly when interpreting the results.
+
+\textbf{Reproducibility.}
+We will publish or archive the experiment scripts, topology definitions, forwarding rules, workload parameters, seeds, raw measurement files, and analysis notebooks used to produce the reported figures and tables.
+The final report will list the virtual-machine specification, Linux distribution and kernel version, Mininet version, HashiCorp Raft version, and any instrumentation added for measurement.
+Together with the fixed trial sequence above, this material is intended to make the study reproducible by an independent party on equivalent hardware.
 
 \subsection{Use of AI Tools}
-
-\guidance{Describe how the group intends to use AI-assisted tools while carrying out the project, such as for literature discovery, language feedback, coding support, and data analysis. Explain how outputs will be verified and how the group will retain responsibility for the intellectual content. If no AI tools are planned to be used, it is sufficient to only state that.}
-
-\placeholder{[Planned use of AI tools]}
+AI tools will be used to assist with writing helper and configuration scripts for the experiments, as well as for checking and correcting the text in report drafts and final report in terms of grammar and style.
+AI-produced content will be verified and checked by us.
 
 \section{Project Planning and Feasibility}
 
@@ -296,11 +368,4 @@ Running all replicas, the client, and Mininet on one virtual machine may introdu
 
 \bibliographystyle{myIEEEtran}
 \bibliography{II2202-research-plan}
-
-\unnumberedheading{Appendix/Appendices (Optional)}
-
-\guidance{Use appendices for supporting material such as detailed parameter lists, questionnaires/interview guides, or additional methodological details. Call this part Appendix if there is only one section, while you should call it Appendices if there are multiple sections.}
-
-\placeholder{[Optional appendix material]}
-
 \end{document}
