@@ -75,7 +75,7 @@ Distributed systems utilize consensus protocols to find agreement on a shared st
 Raft - one of such protocols - is a leader-based consensus protocol.
 In order for Raft to make progress, it needs to be able to communicate with a majority quorum via P2P links. 
 However, in partial network topologies, some of the links may fail, causing the leader to lose contact with such quorum.
-In this case, the leader may not be able tocontinue making progress, and in certain topologies, unable to elect next leader.
+In this case, the leader may not be able to continue making progress, and in certain topologies, unable to elect next leader.
 
 One of the proposed solutions to this problem by the state-of-the-art is to use network overlays on top of the existing consensus protocol.
 However, such solution is not sufficiently evaluated by prior work in the context of Raft.
@@ -303,7 +303,7 @@ Election timing, message scheduling, and host contention introduce run-to-run va
 We will mitigate this by repeating each condition, recording seeds, running trials sequentially, and monitoring host load against a predefined overload threshold.
 Configuration errors could allow traffic to bypass a failed link or prevent a planned forwarded path from working; batch-level connectivity and delay checks, together with predefined exclusion and rerun rules, are intended to limit such contamination.
 Measurement clock skew between client timestamps and Raft logs could distort latency if clocks are not aligned; we will prefer client-side submission and confirmation timestamps for RQ2 and cross-check commit events against Raft records for consistency rather than mixing clocks unnecessarily.
-Implementation-specific behaviour in HashiCorp Raft may differ from Raft theoretical model; we will document the library version and configuration, and we will treat unexpected negative findings as results rather than altering topologies after data collection.
+Implementation-specific behavior in HashiCorp Raft may differ from Raft theoretical model; we will document the library version and configuration, and we will treat unexpected negative findings as results rather than altering topologies after data collection.
 External validity is limited to the emulated Mininet setting, the chosen topologies, and the selected delays; we will state these bounds explicitly when interpreting the results.
 
 \textbf{Reproducibility.}
@@ -361,7 +361,7 @@ Both authors will therefore remain able to explain the experimental setup, analy
 A configuration error could allow traffic to bypass a failed link or prevent a planned forwarded path from working. We will first test the three-node chained topology and verify reachability and end-to-end delay before every experimental batch. If a validation fails, the batch will not begin until the routes and failure rules have been corrected. Runs affected by an undetected configuration error will be excluded according to a predefined rule and repeated from a clean state.
 
 \textbf{The expected Raft failure does not appear.}
-HashiCorp Raft may behave differently from the protocol model because of its implementation details or election timing. We will verify the initial leader, connectivity, and log state before injecting each failure, and we will use repeated runs and recorded seeds to distinguish consistent behaviour from timing variation. If a topology still does not produce the expected failure after the setup has been validated, the result will be reported as a negative finding rather than changing the topology after data collection.
+HashiCorp Raft may behave differently from the protocol model because of its implementation details or election timing. We will verify the initial leader, connectivity, and log state before injecting each failure, and we will use repeated runs and recorded seeds to distinguish consistent behavior from timing variation. If a topology still does not produce the expected failure after the setup has been validated, the result will be reported as a negative finding rather than changing the topology after data collection.
 
 \textbf{Host contention affects the measurements.}
 Running all replicas, the client, and Mininet on one virtual machine may introduce CPU or memory contention that hides the effect of network delay. We will run trials sequentially, keep the VM configuration fixed, and monitor host load. We will define an overload threshold before the main experiment. If a batch exceeds this threshold, we will move to a larger VM or reduce the offered workload and repeat the complete affected batch under one fixed configuration.
