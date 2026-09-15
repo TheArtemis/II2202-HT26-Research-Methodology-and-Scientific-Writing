@@ -71,20 +71,30 @@
 \end{frame}
 
 % ------------------------------------------------------------
-\begin{frame}[t,shrink=5]{Research topic and problem}
-\textbf{Problem.}
-In Raft, leader needs majority quorum. Under certain partial partitions, this quorum could not be stabely maintained. 
-Overlay routing is proposed by prior work, but significantly not tested with Raft.
+\begin{frame}[t]{Research topic and problem}
+  \begin{columns}[T,onlytextwidth]
+    \begin{column}{0.36\textwidth}
+      {\footnotesize
+      \textbf{Problem.}\\[0.2em]
+      Raft needs a majority quorum.
+      Under some partial partitions that quorum cannot be kept.
+      Overlay routing is proposed, but little tested with Raft.
 
-\smallskip
-\textbf{RQ1.} In which partial partitions does forwarding restore stable progress?\\
-\textbf{RQ2.} How does added hop delay change commit latency?
+      \vspace{0.55em}
+      \textbf{RQ1.}\\[0.15em]
+      In which partitions does forwarding restore stable progress?
 
-\vspace{0.3em}
-\begin{center}
-  \includegraphics[width=\textwidth,height=2.95cm,keepaspectratio]{topology-excerpt.png}\\[0.08em]
-  {\scriptsize\color{quiet}Excerpt of planned topologies (direct vs.\ transparent forwarding)}
-\end{center}
+      \vspace{0.45em}
+      \textbf{RQ2.}\\[0.15em]
+      How does added hop delay change commit latency?
+      }
+    \end{column}
+    \begin{column}{0.62\textwidth}
+      \centering
+      \includegraphics[height=6.05cm,keepaspectratio]{../figures/topology-scenarios.png}\\[0.15em]
+      {\scriptsize\color{quiet}Planned topologies T0--T4 (direct vs.\ transparent forwarding)}
+    \end{column}
+  \end{columns}
 \end{frame}
 
 % ------------------------------------------------------------
