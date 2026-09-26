@@ -1,0 +1,12 @@
+# T4 — Chained connectivity (B--A--C; failed B--C)
+name: T4
+nodes: [A, B, C]
+identity_cidr: 10.0.0.0/24
+initial_leader: B
+links:
+  - {endpoints: [B, A], failed: false}
+  - {endpoints: [A, C], failed: false}
+  - {endpoints: [B, C], failed: true}
+forwarding_routes:
+  - {node: B, dest: C, via: A}
+  - {node: C, dest: B, via: A}

@@ -17,3 +17,6 @@
 *.blg
 
 !/data/*.pdf
+
+# Experiment binaries
+experiments/bin/

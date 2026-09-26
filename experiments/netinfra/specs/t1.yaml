@@ -1,0 +1,19 @@
+# T1 — Non-critical partial cut (failed C--E)
+name: T1
+nodes: [A, B, C, D, E]
+identity_cidr: 10.0.0.0/24
+initial_leader: C
+links:
+  - {endpoints: [A, B], failed: false}
+  - {endpoints: [A, C], failed: false}
+  - {endpoints: [A, D], failed: false}
+  - {endpoints: [A, E], failed: false}
+  - {endpoints: [B, C], failed: false}
+  - {endpoints: [B, D], failed: false}
+  - {endpoints: [B, E], failed: false}
+  - {endpoints: [C, D], failed: false}
+  - {endpoints: [C, E], failed: true}
+  - {endpoints: [D, E], failed: false}
+forwarding_routes:
+  - {node: C, dest: E, via: A}
+  - {node: E, dest: C, via: A}

@@ -1,0 +1,23 @@
+# T3 — Constrained election (A--B, A--D, A--E only; C isolated)
+name: T3
+nodes: [A, B, C, D, E]
+identity_cidr: 10.0.0.0/24
+initial_leader: C
+links:
+  - {endpoints: [A, B], failed: false}
+  - {endpoints: [A, C], failed: true}
+  - {endpoints: [A, D], failed: false}
+  - {endpoints: [A, E], failed: false}
+  - {endpoints: [B, C], failed: true}
+  - {endpoints: [B, D], failed: true}
+  - {endpoints: [B, E], failed: true}
+  - {endpoints: [C, D], failed: true}
+  - {endpoints: [C, E], failed: true}
+  - {endpoints: [D, E], failed: true}
+forwarding_routes:
+  - {node: B, dest: D, via: A}
+  - {node: D, dest: B, via: A}
+  - {node: B, dest: E, via: A}
+  - {node: E, dest: B, via: A}
+  - {node: D, dest: E, via: A}
+  - {node: E, dest: D, via: A}
