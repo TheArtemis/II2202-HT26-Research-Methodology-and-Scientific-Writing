@@ -11,6 +11,10 @@ Python.
 experiments/
   go.mod
   cmd/netctl/main.go          # operator / harness CLI
+  cmd/raftd/main.go           # HashiCorp Raft replica
+  cmd/raftclient/main.go      # open-loop client
+  raftnode/                   # Raft node library
+  raftclient/                 # open-loop client library
   netinfra/
     controller.go             # Controller interface
     client.go                 # JSON-RPC client
@@ -43,7 +47,10 @@ Mininet setup.
 | Per-link /30 | `10.100.<i>.0/30` on each TCLink |
 
 - **Direct:** `ip_forward=0`; routes only to on-link neighbors’ identity IPs.
-- **Forwarding:** `ip_forward=1` + YAML `forwarding_routes` (e.g. T4 `B→C via A`).
+- **Forwarding:** `ip_forward=1` + YAML `forwarding_routes` (e.g. T4 `B→C via A`);
+  `rp_filter=0` and `accept_local=1` so multi-hop packets to identity addresses on `lo` work.
+  Connectivity checks bind ping to the source identity (`ping -I`) so return traffic
+  uses identity routes rather than the per-link `/30` (which remote hosts cannot route).
 
 `Start` brings **all** physical links up at the chosen delay. Planned cuts
 (`failed: true` in YAML) are applied later with `InjectPlannedFailures` /
@@ -131,6 +138,6 @@ go test ./netinfra/ -count=1
 
 ## Out of scope
 
-Raft replica binary, open-loop client, measurement schema, and statistical
-analysis. This package stops at a Mininet-backed network control plane usable
-from Go.
+Measurement schema aggregation and statistical analysis notebooks. The YAML
+harness (`harness/`, `cmd/harness`, `configs/pilot.yaml`) runs the Stage 3/4
+trial loop and archives per-run JSONL artifacts for offline analysis.

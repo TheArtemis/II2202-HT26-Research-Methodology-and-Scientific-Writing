@@ -1,0 +1,14 @@
+# Build artifacts
+/bin/
+*.exe
+
+# Experiment outputs
+/results/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / OS
+.DS_Store
+*.swp

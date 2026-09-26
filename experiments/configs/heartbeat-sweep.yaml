@@ -1,0 +1,40 @@
+# Optional heartbeat sweep (run after pilot confirms the main matrix).
+# Note: HashiCorp Raft clamps heartbeat < 5ms up to 5ms.
+name: heartbeat-sweep
+description: Cross heartbeat IV on T1/T4 only (control + chain) for RQ sensitivity.
+output_dir: results/heartbeat-sweep
+
+binaries:
+  raftd: ./bin/raftd
+  raftclient: ./bin/raftclient
+
+matrix:
+  topologies: [t1, t4]
+  modes: [direct, forwarding]
+  delays: [5ms]
+  heartbeats: [5ms, 10ms, 500ms]
+  repetitions: 5
+
+timing:
+  cluster_ready_timeout: 30s
+  settle: 1s
+  warmup: 3s
+  observe: 20s
+  teardown_pause: 1s
+
+workload:
+  rate: 100
+  payload_size: 64
+  apply_timeout: 2s
+
+raft:
+  seed_t3: true
+
+qa:
+  validate_after_inject: true
+  require_warmup_commits: true
+  min_warmup_ok: 5
+  continue_on_error: true
+
+seeds:
+  base: 42

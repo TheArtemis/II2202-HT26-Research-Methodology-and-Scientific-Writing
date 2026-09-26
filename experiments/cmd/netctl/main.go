@@ -38,6 +38,8 @@ func main() {
 		err = cmdInject(args)
 	case "list":
 		err = cmdList(args)
+	case "peers":
+		err = cmdPeers(args)
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -64,6 +66,7 @@ Usage:
   netctl validate
   netctl down                            # Stop + mn -c cleanup
   netctl list                            # embedded topology names
+  netctl peers <t0|…|t4>                 # print Raft -peers A=10.0.0.1,... string
 
 Environment:
   MININETD_ADDR   unix socket path or host:port (default /tmp/mininetd.sock)
@@ -71,7 +74,8 @@ Environment:
 Typical harness sequence:
   sudo python3 experiments/netinfra/mininetd/server.py &
   netctl up t4 --mode forwarding --delay 5ms
-  # warm-up / start Raft via: netctl exec A -- ./raft ...
+  PEERS=$(netctl peers t4)
+  # start raftd on each host (prefer initial_leader), then open-loop raftclient
   netctl inject
   netctl validate
   netctl down
@@ -315,6 +319,35 @@ func cmdList(args []string) error {
 	}
 	for _, n := range names {
 		fmt.Println(n)
+	}
+	return nil
+}
+
+func cmdPeers(args []string) error {
+	fs := flag.NewFlagSet("peers", flag.ContinueOnError)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() < 1 {
+		return fmt.Errorf("usage: netctl peers <t0|t1|t2|t3|t4|path.yaml>")
+	}
+	spec, err := loadTopo(fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	m, err := spec.IdentityMap()
+	if err != nil {
+		return err
+	}
+	// Stable ID=IP,... for raftd/raftclient -peers
+	ids := append([]string(nil), spec.Nodes...)
+	parts := make([]string, 0, len(ids))
+	for _, id := range ids {
+		parts = append(parts, fmt.Sprintf("%s=%s", id, m[id]))
+	}
+	fmt.Println(strings.Join(parts, ","))
+	if spec.InitialLeader != "" {
+		fmt.Fprintf(os.Stderr, "# initial_leader=%s\n", spec.InitialLeader)
 	}
 	return nil
 }

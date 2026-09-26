@@ -87,7 +87,9 @@ class TopologyRuntime:
                 hosts[b],
                 cls=TCLink,
                 delay=delay_str,
-                bw=1000,
+                # Modest bw avoids sch_htb "quantum … is big" warnings from bw=1000.
+                # Experiments vary delay, not capacity; 100 Mbit/s >> Raft RPC load.
+                bw=100,
             )
             # intf1 is attached to first host arg, intf2 to second.
             intf_a, intf_b = lnk.intf1, lnk.intf2
@@ -202,6 +204,17 @@ class TopologyRuntime:
         for name in self.topo["nodes"]:
             h = self.net.get(name)
             h.cmd(f"sysctl -w net.ipv4.ip_forward={forward}")
+            # Identity IPs live on lo; multi-hop replies and Raft need loose rp_filter
+            # and accept_local so packets to lo addresses may ingress on veths.
+            h.cmd("sysctl -w net.ipv4.conf.all.rp_filter=0")
+            h.cmd("sysctl -w net.ipv4.conf.default.rp_filter=0")
+            h.cmd("sysctl -w net.ipv4.conf.all.accept_local=1")
+            for intf in h.intfList():
+                if intf.name == "lo":
+                    continue
+                # sysctl replaces '.' in iface names with '/'.
+                sys_name = intf.name.replace(".", "/")
+                h.cmd(f"sysctl -w net.ipv4.conf.{sys_name}.rp_filter=0")
             # Drop previous experiment identity routes (keep link-local /30 connected).
             for other, ip in self.idents.items():
                 if other == name:
@@ -221,7 +234,7 @@ class TopologyRuntime:
         if mode != "forwarding":
             return
 
-        # Multi-hop static routes from YAML (only if both legs toward via are up).
+        # Multi-hop static routes from YAML (only if the node→via leg is up).
         for route in self.topo.get("forwarding_routes") or []:
             node, dest, via = route["node"], route["dest"], route["via"]
             leg = _link_key(node, via)
@@ -266,7 +279,10 @@ class TopologyRuntime:
             for dst, ip in self.idents.items():
                 if src == dst:
                     continue
-                out, code = self.exec(src, f"ping -c 1 -W 1 {ip}")
+                # Bind source to identity IP so multi-hop return path uses identity routes
+                # (default src would be the /30 link address, which remote hosts cannot route).
+                src_ip = self.idents[src]
+                out, code = self.exec(src, f"ping -c 1 -W 1 -I {src_ip} {ip}")
                 results.append(
                     {"src": src, "dst": dst, "ip": ip, "ok": code == 0, "code": code}
                 )

@@ -143,8 +143,14 @@ func (c *Client) validateConnectivity(ctx context.Context) error {
 }
 
 func (c *Client) pingIdentity(src, dstIP string) (bool, error) {
-	// One probe, short timeout; identity /32.
-	cmd := fmt.Sprintf("ping -c 1 -W 1 %s 2>&1; echo EXIT:$?", dstIP)
+	srcIP, err := c.topo.IdentityIP(src)
+	if err != nil {
+		return false, err
+	}
+	// Bind source to the identity address. Without -I, ping uses the /30 link
+	// address as source; multi-hop peers have no route back to that /30, so
+	// forwarding-mode checks falsely fail even when identity routing works.
+	cmd := fmt.Sprintf("ping -c 1 -W 1 -I %s %s 2>&1; echo EXIT:$?", srcIP, dstIP)
 	out, err := c.rawExec(src, cmd)
 	if err != nil && out == "" {
 		return false, err
@@ -219,7 +225,11 @@ func (c *Client) validateDelay(ctx context.Context) error {
 }
 
 func (c *Client) measureRTT(src, dstIP string) (time.Duration, error) {
-	cmd := fmt.Sprintf("ping -c 3 -W 2 %s 2>&1", dstIP)
+	srcIP, err := c.topo.IdentityIP(src)
+	if err != nil {
+		return 0, err
+	}
+	cmd := fmt.Sprintf("ping -c 3 -W 2 -I %s %s 2>&1", srcIP, dstIP)
 	out, err := c.rawExec(src, cmd)
 	if err != nil && out == "" {
 		return 0, err
