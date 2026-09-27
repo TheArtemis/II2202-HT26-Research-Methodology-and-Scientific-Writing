@@ -36,7 +36,8 @@ type Controller interface {
 	// InjectPlannedFailures brings down every link marked failed in the YAML.
 	InjectPlannedFailures() error
 
-	// InjectAroundLeader remaps YAML failure marks (and forwarding routes) so the
-	// cut pattern is centered on actualLeader, then brings those links down.
+	// InjectAroundLeader remaps YAML failure marks so the cut pattern is
+	// centered on actualLeader, brings those links down, and refreshes overlay
+	// detours on the surviving full mesh.
 	InjectAroundLeader(actualLeader string) error
 }

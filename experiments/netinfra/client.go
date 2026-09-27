@@ -279,31 +279,22 @@ func (c *Client) InjectPlannedFailures() error {
 			return fmt.Errorf("inject %s--%s: %w", pair[0], pair[1], err)
 		}
 	}
+	c.topo.ForwardingRoutes = ComputeOverlayRoutes(c.topo, c.actualDownSet())
 	return nil
 }
 
 // InjectAroundLeader implements Controller.
 func (c *Client) InjectAroundLeader(actualLeader string) error {
 	remapped := c.topo.RemapLeader(actualLeader)
-	routes := make([]map[string]string, 0, len(remapped.ForwardingRoutes))
-	for _, r := range remapped.ForwardingRoutes {
-		routes = append(routes, map[string]string{
-			"node": r.Node,
-			"dest": r.Dest,
-			"via":  r.Via,
-		})
-	}
-	if err := c.call(context.Background(), "SetForwardingRoutes", map[string]interface{}{
-		"routes": routes,
-	}, nil); err != nil {
-		return fmt.Errorf("set forwarding routes: %w", err)
-	}
-	c.topo.ForwardingRoutes = remapped.ForwardingRoutes
+	// Keep failure marks aligned with the remapped cut; overlay detours are
+	// recomputed inside mininetd apply_mode after each SetLink.
+	c.topo = remapped
 	for _, pair := range remapped.PlannedFailures() {
 		if err := c.SetLink(pair[0], pair[1], false); err != nil {
 			return fmt.Errorf("inject %s--%s (around %s): %w", pair[0], pair[1], actualLeader, err)
 		}
 	}
+	c.topo.ForwardingRoutes = ComputeOverlayRoutes(c.topo, c.actualDownSet())
 	return nil
 }
 

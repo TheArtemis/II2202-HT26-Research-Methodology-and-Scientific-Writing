@@ -11,7 +11,8 @@ type Mode int
 const (
 	// Direct allows only on-link neighbors (ip_forward=0, no multi-hop routes).
 	Direct Mode = iota
-	// Forwarding enables ip_forward and installs static routes from the topology.
+	// Forwarding enables ip_forward and installs shortest-path overlay detours
+	// around down links on the full-mesh underlay (simplified NIFTY-style).
 	Forwarding
 )
 

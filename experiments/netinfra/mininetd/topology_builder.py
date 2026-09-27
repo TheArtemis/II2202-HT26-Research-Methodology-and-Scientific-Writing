@@ -3,8 +3,10 @@
 Addressing model (matches the Go netinfra plan):
   - Identity IP on lo: 10.0.0.(i+1) for nodes[i] (from identity_cidr base)
   - One /30 per physical link under 10.100.(link_index+1).0/30
+  - Underlay: full mesh of TCLinks; failed links are brought down at inject
   - Direct mode: ip_forward=0; routes only to on-link neighbors' identity IPs
-  - Forwarding mode: ip_forward=1; plus static routes from forwarding_routes
+  - Forwarding mode: ip_forward=1 + shortest-path overlay detours around down
+    links (simplified NIFTY-style reroute through intermediate nodes)
 """
 
 from __future__ import annotations
@@ -222,26 +224,36 @@ class TopologyRuntime:
                 h.cmd(f"ip route del {ip}/32 2>/dev/null")
 
         # Direct on-link identity routes for every UP neighbor.
+        # Pin src=identity so Raft TCP (which does not bind -I) uses a returnable
+        # address; otherwise multi-hop peers only learn /32 identity routes and
+        # cannot reply to a /30 link-local source (T3 spoke↔spoke timeouts).
         for key, meta in self.links.items():
             if self.down.get(key):
                 continue
             a, b = meta["a"], meta["b"]
             ha, hb = self.net.get(a), self.net.get(b)
-            # a → b identity via b's link IP; b → a similarly.
-            ha.cmd(f"ip route replace {self.idents[b]}/32 via {meta['ip_b']} dev {meta['intf_a'].name}")
-            hb.cmd(f"ip route replace {self.idents[a]}/32 via {meta['ip_a']} dev {meta['intf_b'].name}")
+            ha.cmd(
+                f"ip route replace {self.idents[b]}/32 via {meta['ip_b']} "
+                f"dev {meta['intf_a'].name} src {self.idents[a]}"
+            )
+            hb.cmd(
+                f"ip route replace {self.idents[a]}/32 via {meta['ip_a']} "
+                f"dev {meta['intf_b'].name} src {self.idents[b]}"
+            )
 
         if mode != "forwarding":
             return
 
-        # Multi-hop static routes from YAML (only if the node→via leg is up).
-        for route in self.topo.get("forwarding_routes") or []:
+        # Simplified NIFTY overlay: for every non-adjacent reachable pair, install
+        # a /32 via the first hop of a shortest path on the surviving mesh.
+        routes = self._compute_overlay_routes()
+        self.topo["forwarding_routes"] = routes
+        for route in routes:
             node, dest, via = route["node"], route["dest"], route["via"]
             leg = _link_key(node, via)
             if self.down.get(leg):
                 continue
             meta = self.links[leg]
-            # Next-hop IP is the via host's address on the node–via link.
             if meta["a"] == node:
                 via_ip = meta["ip_b"]
                 out_dev = meta["intf_a"].name
@@ -250,7 +262,44 @@ class TopologyRuntime:
                 out_dev = meta["intf_b"].name
             h = self.net.get(node)
             dest_ip = self.idents[dest]
-            h.cmd(f"ip route replace {dest_ip}/32 via {via_ip} dev {out_dev}")
+            src_ip = self.idents[node]
+            h.cmd(f"ip route replace {dest_ip}/32 via {via_ip} dev {out_dev} src {src_ip}")
+
+    def _compute_overlay_routes(self) -> List[Dict[str, str]]:
+        """BFS next-hop table for multi-hop identity routes (surviving links only)."""
+        nodes = list(self.topo.get("nodes") or [])
+        adj: Dict[str, List[str]] = {n: [] for n in nodes}
+        for key, meta in self.links.items():
+            if self.down.get(key):
+                continue
+            a, b = meta["a"], meta["b"]
+            adj[a].append(b)
+            adj[b].append(a)
+
+        routes: List[Dict[str, str]] = []
+        for src in nodes:
+            # dest → first hop from src (neighbour hop == dest means on-link).
+            next_hop: Dict[str, str] = {src: ""}
+            queue: List[Tuple[str, str]] = [(src, "")]
+            qi = 0
+            while qi < len(queue):
+                cur, hop = queue[qi]
+                qi += 1
+                for nb in adj.get(cur, []):
+                    if nb in next_hop:
+                        continue
+                    first = hop if hop else nb
+                    next_hop[nb] = first
+                    queue.append((nb, first))
+            for dst in nodes:
+                if src == dst:
+                    continue
+                via = next_hop.get(dst)
+                if not via or via == dst:
+                    continue
+                routes.append({"node": src, "dest": dst, "via": via})
+        routes.sort(key=lambda r: (r["node"], r["dest"], r["via"]))
+        return routes
 
     def exec(self, node: str, cmd: str) -> Tuple[str, int]:
         self._require_net()

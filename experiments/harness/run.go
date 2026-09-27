@@ -241,7 +241,20 @@ func (r *Runner) runTrialInner(ctx context.Context, trial Trial, st *TrialStatus
 			_ = r.collectArtifacts(trial)
 			return fmt.Errorf("T3 reseed health: %w", err)
 		}
-		r.logf("T3: restarted with divergent seeds under partition (tip on %s)", st.Leader)
+		// Tip holder is isolated; run the open-loop client from a majority-side
+		// host so Apply can reach an electable leader under forwarding.
+		if host := majorityClientHost(trial, st.Leader); host != "" && host != trial.ClientNode {
+			r.logf("T3: moving client host %s → %s (isolated tip %s)", trial.ClientNode, host, st.Leader)
+			trial.ClientNode = host
+			_ = writeYAML(filepath.Join(trial.Dir, "meta.yaml"), trialMeta(trial, r.Exp))
+		}
+		if lid, lerr := r.waitLeaderAmong(ctx, trial, st.Leader, 5*time.Second); lerr == nil && lid != "" {
+			r.logf("T3: majority-side leader %s (tip %s isolated)", lid, st.Leader)
+			st.Leader = lid
+		} else {
+			r.logf("T3: no majority leader yet after reseed (%v); client will probe peers", lerr)
+		}
+		r.logf("T3: restarted with divergent seeds under partition (tip remapped; client on %s)", trial.ClientNode)
 	} else {
 		if err := c.InjectAroundLeader(st.Leader); err != nil {
 			return fmt.Errorf("inject around %s: %w", st.Leader, err)
@@ -555,6 +568,48 @@ func (r *Runner) findLeader(trial Trial) (string, error) {
 		return reported, nil
 	}
 	return "", fmt.Errorf("no leader")
+}
+
+// majorityClientHost picks a Mininet host that is not the isolated tip holder so
+// the open-loop client can still reach the surviving majority under T3.
+func majorityClientHost(trial Trial, isolated string) string {
+	for _, id := range trial.Spec.Nodes {
+		if id != isolated {
+			return id
+		}
+	}
+	return trial.ClientNode
+}
+
+// waitLeaderAmong polls until some node other than excluded reports Leader.
+func (r *Runner) waitLeaderAmong(ctx context.Context, trial Trial, excluded string, timeout time.Duration) (string, error) {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+		for _, id := range trial.Spec.Nodes {
+			if id == excluded {
+				continue
+			}
+			url := fmt.Sprintf("http://%s:%d/stats", trial.Peers[id], r.Exp.Raft.APIPort)
+			out, err := r.Client.ExecOn(id, httpGetCmd(url))
+			if err != nil {
+				continue
+			}
+			var stats map[string]interface{}
+			if json.Unmarshal([]byte(strings.TrimSpace(out)), &stats) != nil {
+				continue
+			}
+			if state, _ := stats["state"].(string); state == "Leader" {
+				return id, nil
+			}
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return "", fmt.Errorf("no majority leader within %s", timeout)
 }
 
 func (r *Runner) countRecentCommits(trial Trial) (int, error) {

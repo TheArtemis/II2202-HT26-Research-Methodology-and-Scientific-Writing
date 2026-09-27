@@ -31,7 +31,9 @@ type LinkSpec struct {
 	Failed    bool     `yaml:"failed" json:"failed"`
 }
 
-// ForwardingRoute is a static multi-hop route installed only in Forwarding mode.
+// ForwardingRoute is one hop of an overlay detour (node → dest via neighbour).
+// YAML may leave forwarding_routes empty; the daemon computes them from the
+// surviving full-mesh graph (simplified NIFTY-style reroute).
 type ForwardingRoute struct {
 	Node string `yaml:"node" json:"node"`
 	Dest string `yaml:"dest" json:"dest"`
@@ -143,6 +145,12 @@ func (s TopologySpec) Validate() error {
 		}
 		seenLinks[key] = struct{}{}
 	}
+	// Overlay model: full mesh underlay; failed:true marks the partial partition.
+	// Multi-hop detours are computed at runtime (ComputeOverlayRoutes), not listed here.
+	wantLinks := len(s.Nodes) * (len(s.Nodes) - 1) / 2
+	if len(seenLinks) != wantLinks {
+		return fmt.Errorf("topology %s: want full mesh (%d links), have %d", s.Name, wantLinks, len(seenLinks))
+	}
 	for i, r := range s.ForwardingRoutes {
 		for _, name := range []string{r.Node, r.Dest, r.Via} {
 			if _, ok := nodeSet[name]; !ok {
@@ -168,8 +176,9 @@ func (s TopologySpec) PlannedFailures() [][2]string {
 }
 
 // RemapLeader returns a copy of the topology with the YAML initial_leader role
-// swapped onto actualLeader. Link failure marks and forwarding_routes follow the
-// swap so inject cuts the same relative pattern around whoever was elected.
+// swapped onto actualLeader. Link failure marks follow the swap so inject cuts
+// the same relative pattern around whoever was elected. Overlay detours are
+// recomputed from the surviving mesh after inject (not renamed from YAML).
 func (s TopologySpec) RemapLeader(actualLeader string) TopologySpec {
 	out := s.clone()
 	planned := strings.TrimSpace(s.InitialLeader)
@@ -194,11 +203,8 @@ func (s TopologySpec) RemapLeader(actualLeader string) TopologySpec {
 		out.Links[i].Endpoints[0] = rename(out.Links[i].Endpoints[0])
 		out.Links[i].Endpoints[1] = rename(out.Links[i].Endpoints[1])
 	}
-	for i := range out.ForwardingRoutes {
-		out.ForwardingRoutes[i].Node = rename(out.ForwardingRoutes[i].Node)
-		out.ForwardingRoutes[i].Dest = rename(out.ForwardingRoutes[i].Dest)
-		out.ForwardingRoutes[i].Via = rename(out.ForwardingRoutes[i].Via)
-	}
+	// Drop any hand-written routes; runtime overlay replaces them.
+	out.ForwardingRoutes = nil
 	out.InitialLeader = actual
 	return out
 }

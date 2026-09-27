@@ -47,14 +47,22 @@ Mininet setup.
 | Per-link /30 | `10.100.<i>.0/30` on each TCLink |
 
 - **Direct:** `ip_forward=0`; routes only to on-link neighbors’ identity IPs.
-- **Forwarding:** `ip_forward=1` + YAML `forwarding_routes` (e.g. T4 `B→C via A`);
+- **Forwarding (simplified NIFTY overlay):** `ip_forward=1`; underlay is a
+  **full mesh**. After inject brings down `failed: true` links, the daemon
+  installs shortest-path `/32` detours so traffic to a peer is rewritten via an
+  intermediate neighbour when the direct edge is down (same idea as NIFTY’s
+  “reroute around the partition,” without OpenFlow/DV). Isolated components
+  (e.g. T3’s C) stay unreachable — there is no physical path to repair.
   `rp_filter=0` and `accept_local=1` so multi-hop packets to identity addresses on `lo` work.
   Connectivity checks bind ping to the source identity (`ping -I`) so return traffic
   uses identity routes rather than the per-link `/30` (which remote hosts cannot route).
+  Host routes also set `src=<identity>` so Raft TCP dials use the same returnable
+  address (without this, spoke↔spoke overlay RPCs time out under T3).
 
-`Start` brings **all** physical links up at the chosen delay. Planned cuts
+`Start` brings **all** physical mesh links up at the chosen delay. Planned cuts
 (`failed: true` in YAML) are applied later with `InjectPlannedFailures` /
-`netctl inject` after warm-up.
+`InjectAroundLeader` / `netctl inject` after warm-up; overlay routes refresh on
+each link change.
 
 ## Run mininetd
 
