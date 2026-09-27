@@ -90,6 +90,26 @@ func TestExpectedReachableT2(t *testing.T) {
 	}
 }
 
+func TestRemapLeaderT1(t *testing.T) {
+	spec, err := netinfra.LoadNamedSpec("t1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Planned: fail C--E. Actual leader A → fail A--E.
+	remapped := spec.RemapLeader("A")
+	fails := remapped.PlannedFailures()
+	if len(fails) != 1 {
+		t.Fatalf("fails=%v", fails)
+	}
+	a, b := fails[0][0], fails[0][1]
+	if !((a == "A" && b == "E") || (a == "E" && b == "A")) {
+		t.Fatalf("expected A--E, got %s--%s", a, b)
+	}
+	if remapped.InitialLeader != "A" {
+		t.Fatalf("initial_leader=%s", remapped.InitialLeader)
+	}
+}
+
 func TestParseMode(t *testing.T) {
 	m, err := netinfra.ParseMode("forwarding")
 	if err != nil || m != netinfra.Forwarding {

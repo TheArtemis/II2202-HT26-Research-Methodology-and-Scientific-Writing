@@ -1,12 +1,27 @@
 package raftnode
 
-// T3SeedLogs matches the research-plan constrained-election initial log terms.
+// T3SeedLogs matches the research-plan constrained-election initial log terms
+// relative to planned initial leader C (longest log).
 var T3SeedLogs = map[string][]uint64{
 	"A": {1, 1},
 	"B": {1, 1, 2},
 	"C": {1, 1, 2, 2},
 	"D": {1, 1, 2},
 	"E": {1, 1},
+}
+
+// RemapT3SeedLogs swaps the planned-leader seed onto actualLeader so the
+// constrained-election tip stays on whoever was leader at inject.
+func RemapT3SeedLogs(plannedLeader, actualLeader string) map[string][]uint64 {
+	out := make(map[string][]uint64, len(T3SeedLogs))
+	for id, terms := range T3SeedLogs {
+		out[id] = append([]uint64(nil), terms...)
+	}
+	if plannedLeader == "" || actualLeader == "" || plannedLeader == actualLeader {
+		return out
+	}
+	out[plannedLeader], out[actualLeader] = out[actualLeader], out[plannedLeader]
+	return out
 }
 
 // FormatSeedLog renders terms as a -seed-log flag value.

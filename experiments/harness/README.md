@@ -2,14 +2,13 @@
 
 Orchestrates the research-plan trial loop against Mininet + HashiCorp Raft:
 
-1. Start topology (all links up) at configured per-link delay and mode  
-2. Start `raftd` on each host (non-preferred get a long `-election`, which also defers follower campaigns because HashiCorp uses HeartbeatTimeout to start elections; preferred gets `-prefer-leader`)
-3. Wait until all `/health` endpoints respond, then until the planned initial leader holds office (transfer via `POST /transfer?id=<preferred>` on the *current* leader if needed); then `POST /timeouts` restores the matrix heartbeat on every node
-4. Start open-loop `raftclient` inside the client node (default: initial leader)  
-5. Warm up and require successful commits  
-6. Inject planned link failures; optional connectivity validate  
-7. Observe for configured duration  
-8. Stop processes, archive JSONL/logs under `output_dir/<run_id>/`, tear down  
+1. Start topology with **all links up**
+2. Start `raftd` (natural election; no forced preferred leader)
+3. Wait until healthy and **any** leader exists; record it in `status.leader`
+4. Optional warmup to confirm the cluster is initially stable under that leader
+5. Inject cuts **remapped around the actual leader** (YAML pattern relative to `initial_leader`); for T3+`seed_t3`, reseed divergent logs under the partition with the tip on that leader
+6. Observe for configured duration  
+7. Stop processes, archive JSONL/logs under `output_dir/<run_id>/`, tear down  
 
 ## Configs
 

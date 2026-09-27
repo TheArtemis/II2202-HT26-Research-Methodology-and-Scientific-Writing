@@ -146,7 +146,15 @@ func (r *Runner) runTrialInner(ctx context.Context, trial Trial, st *TrialStatus
 		Clock: "CLOCK_REALTIME",
 	}
 
-	if err := r.startReplicas(trial); err != nil {
+	t3Seed := r.useT3Seeds(trial)
+	plannedLeader := trial.Leader // YAML initial_leader role for remap
+
+	// Phase 1: full connectivity, natural election — observe who leads.
+	if err := r.startReplicas(trial, replicaStartOpts{
+		DeferCampaign: false,
+		PreferLeader:  false,
+		SeedT3:        false, // seeds applied at inject for T3 only
+	}); err != nil {
 		return err
 	}
 	time.Sleep(r.Exp.Timing.Settle.Duration)
@@ -155,44 +163,102 @@ func (r *Runner) runTrialInner(ctx context.Context, trial Trial, st *TrialStatus
 		_ = r.collectArtifacts(trial)
 		return err
 	}
-	if err := r.waitClusterReady(ctx, trial); err != nil {
-		_ = r.collectArtifacts(trial)
-		return err
-	}
-	if err := r.restoreTimeouts(trial); err != nil {
-		_ = r.collectArtifacts(trial)
-		return err
-	}
-
-	clientDur := r.Exp.Timing.Warmup.Duration + r.Exp.Timing.Observe.Duration + 10*time.Second
-	if err := r.startClient(trial, clientDur); err != nil {
-		return err
-	}
-	tl.ClientStartedNS = time.Now().UnixNano()
-
-	time.Sleep(r.Exp.Timing.Warmup.Duration)
-	tl.WarmupEndNS = time.Now().UnixNano()
-
-	warmupOK, err := r.countRecentCommits(trial)
+	leader, err := r.waitClusterReady(ctx, trial)
 	if err != nil {
-		return fmt.Errorf("warmup check: %w", err)
+		_ = r.collectArtifacts(trial)
+		return err
 	}
-	st.WarmupOK = warmupOK
-	if r.Exp.QA.RequireWarmupCommits && warmupOK < r.Exp.QA.MinWarmupOK {
-		return fmt.Errorf("warmup: only %d commits (need >= %d)", warmupOK, r.Exp.QA.MinWarmupOK)
+	st.Leader = leader
+	r.logf("initial leader elected: %s (YAML role %s)", leader, plannedLeader)
+
+	warmup := r.Exp.Timing.Warmup.Duration
+	if t3Seed {
+		warmup = 0
+		r.logf("T3: skipping warmup to preserve divergent seed logs at inject")
 	}
 
+	if warmup > 0 {
+		clientDur := warmup + r.Exp.Timing.Observe.Duration + 10*time.Second
+		if err := r.startClient(trial, clientDur, st.Leader); err != nil {
+			return err
+		}
+		tl.ClientStartedNS = time.Now().UnixNano()
+		time.Sleep(warmup)
+		tl.WarmupEndNS = time.Now().UnixNano()
+
+		warmupOK, err := r.countRecentCommits(trial)
+		if err != nil {
+			return fmt.Errorf("warmup check: %w", err)
+		}
+		st.WarmupOK = warmupOK
+		if r.Exp.QA.RequireWarmupCommits && warmupOK < r.Exp.QA.MinWarmupOK {
+			return fmt.Errorf("warmup: only %d commits (need >= %d) — cluster not initially stable", warmupOK, r.Exp.QA.MinWarmupOK)
+		}
+		if lid, lerr := r.findLeader(trial); lerr == nil && lid != "" {
+			if lid != st.Leader {
+				r.logf("leader after warmup: %s (was %s)", lid, st.Leader)
+			}
+			st.Leader = lid
+		}
+	} else {
+		tl.WarmupEndNS = time.Now().UnixNano()
+		st.WarmupOK = 0
+		// Brief stability: same leader across two polls.
+		time.Sleep(500 * time.Millisecond)
+		if lid, lerr := r.findLeader(trial); lerr == nil && lid != "" {
+			st.Leader = lid
+		}
+	}
+
+	r.logf("cutting topology around leader %s", st.Leader)
 	st.InjectAt = time.Now().UTC()
 	st.InjectAtNS = st.InjectAt.UnixNano()
 	tl.InjectAt = st.InjectAt.Format(time.RFC3339Nano)
 	tl.InjectAtNS = st.InjectAtNS
-	if err := c.InjectPlannedFailures(); err != nil {
-		return fmt.Errorf("inject: %w", err)
-	}
-	if r.Exp.QA.ValidateAfterInject {
-		if err := c.Validate(ctx); err != nil {
-			return fmt.Errorf("validate after inject: %w", err)
+
+	if t3Seed {
+		if err := r.stopReplicas(trial); err != nil {
+			r.logf("T3 stop before reseed: %v", err)
 		}
+		if err := c.InjectAroundLeader(st.Leader); err != nil {
+			return fmt.Errorf("inject around %s: %w", st.Leader, err)
+		}
+		if r.Exp.QA.ValidateAfterInject {
+			if err := c.Validate(ctx); err != nil {
+				return fmt.Errorf("validate after inject: %w", err)
+			}
+		}
+		seeds := raftnode.RemapT3SeedLogs(plannedLeader, st.Leader)
+		if err := r.startReplicas(trial, replicaStartOpts{
+			DeferCampaign: false,
+			PreferLeader:  false,
+			SeedLogs:      seeds,
+		}); err != nil {
+			return fmt.Errorf("T3 reseed under partition: %w", err)
+		}
+		time.Sleep(r.Exp.Timing.Settle.Duration)
+		if err := r.waitReplicasHealthy(ctx, trial); err != nil {
+			_ = r.collectArtifacts(trial)
+			return fmt.Errorf("T3 reseed health: %w", err)
+		}
+		r.logf("T3: restarted with divergent seeds under partition (tip on %s)", st.Leader)
+	} else {
+		if err := c.InjectAroundLeader(st.Leader); err != nil {
+			return fmt.Errorf("inject around %s: %w", st.Leader, err)
+		}
+		if r.Exp.QA.ValidateAfterInject {
+			if err := c.Validate(ctx); err != nil {
+				return fmt.Errorf("validate after inject: %w", err)
+			}
+		}
+	}
+
+	if warmup == 0 {
+		clientDur := r.Exp.Timing.Observe.Duration + 10*time.Second
+		if err := r.startClient(trial, clientDur, st.Leader); err != nil {
+			return err
+		}
+		tl.ClientStartedNS = time.Now().UnixNano()
 	}
 
 	select {
@@ -223,6 +289,17 @@ func (r *Runner) runTrialInner(ctx context.Context, trial Trial, st *TrialStatus
 	return nil
 }
 
+func (r *Runner) useT3Seeds(trial Trial) bool {
+	return r.Exp.Raft.SeedT3 && strings.EqualFold(trial.Topology, "T3")
+}
+
+type replicaStartOpts struct {
+	DeferCampaign bool
+	PreferLeader  bool
+	SeedT3        bool              // use canonical T3SeedLogs
+	SeedLogs      map[string][]uint64 // explicit per-node seeds (T3 remapped)
+}
+
 func (r *Runner) startHostLoadMonitor(trial Trial) func() {
 	interval := r.Exp.QA.HostLoadInterval.Duration
 	if interval <= 0 {
@@ -247,22 +324,27 @@ func (r *Runner) startHostLoadMonitor(trial Trial) func() {
 	return func() { close(done) }
 }
 
-func (r *Runner) startReplicas(trial Trial) error {
+func (r *Runner) startReplicas(trial Trial, opts replicaStartOpts) error {
 	peers := raftnode.FormatPeers(trial.Peers)
-	// Start non-preferred first with a long election timeout so they do not
-	// campaign during warm-up; preferred starts last with -prefer-leader.
-	// (T3 seeds let B/D win majority without C if they time out first.)
 	followerElection := 30 * time.Second
 	if d := r.Exp.Timing.ClusterReadyTimeout.Duration; d > followerElection {
 		followerElection = d
 	}
 	order := make([]string, 0, len(trial.Spec.Nodes))
-	for _, n := range trial.Spec.Nodes {
-		if n != trial.Leader {
-			order = append(order, n)
+	if opts.PreferLeader {
+		for _, n := range trial.Spec.Nodes {
+			if n != trial.Leader {
+				order = append(order, n)
+			}
 		}
+		order = append(order, trial.Leader)
+	} else {
+		order = append(order, trial.Spec.Nodes...)
 	}
-	order = append(order, trial.Leader)
+	seedMap := opts.SeedLogs
+	if seedMap == nil && opts.SeedT3 {
+		seedMap = raftnode.T3SeedLogs
+	}
 	for _, id := range order {
 		ip := trial.Peers[id]
 		events := fmt.Sprintf("/tmp/%s-events.jsonl", trial.RunID+"-"+id)
@@ -279,15 +361,13 @@ func (r *Runner) startReplicas(trial Trial) error {
 			"-network-delay", trial.Delay.String(),
 			"-events", events,
 		}
-		if id == trial.Leader {
+		if opts.PreferLeader && id == trial.Leader {
 			args = append(args, "-prefer-leader")
-		} else {
+		} else if opts.DeferCampaign {
 			args = append(args, "-election", followerElection.String())
 		}
-		if r.Exp.Raft.SeedT3 && strings.EqualFold(trial.Topology, "T3") {
-			if terms, ok := raftnode.T3SeedLogs[id]; ok {
-				args = append(args, "-seed-log", raftnode.FormatSeedLog(terms))
-			}
+		if terms, ok := seedMap[id]; ok {
+			args = append(args, "-seed-log", raftnode.FormatSeedLog(terms))
 		}
 		cmd := fmt.Sprintf("rm -f %s %s; nohup %s > %s 2>&1 & echo $! > %s",
 			events, pidPath, strings.Join(args, " "), logPath, pidPath)
@@ -299,7 +379,10 @@ func (r *Runner) startReplicas(trial Trial) error {
 	return nil
 }
 
-func (r *Runner) startClient(trial Trial, duration time.Duration) error {
+func (r *Runner) startClient(trial Trial, duration time.Duration, leaderID string) error {
+	if leaderID == "" {
+		leaderID = trial.Leader
+	}
 	peers := raftnode.FormatPeers(trial.Peers)
 	outPath := fmt.Sprintf("/tmp/%s-client.jsonl", trial.RunID)
 	pidPath := fmt.Sprintf("/tmp/%s-client.pid", trial.RunID)
@@ -310,7 +393,7 @@ func (r *Runner) startClient(trial Trial, duration time.Duration) error {
 		shellQuote(r.Exp.Binaries.Raftclient),
 		shellQuote(peers),
 		r.Exp.Raft.APIPort,
-		trial.Leader,
+		leaderID,
 		r.Exp.Workload.Rate,
 		duration.String(),
 		r.Exp.Workload.PayloadSize,
@@ -404,49 +487,22 @@ func (r *Runner) waitReplicasHealthy(ctx context.Context, trial Trial) error {
 	return fmt.Errorf("raftd health: not all nodes healthy within %s", r.Exp.Timing.ClusterReadyTimeout.Duration)
 }
 
-func (r *Runner) waitClusterReady(ctx context.Context, trial Trial) error {
+func (r *Runner) waitClusterReady(ctx context.Context, trial Trial) (string, error) {
 	deadline := time.Now().Add(r.Exp.Timing.ClusterReadyTimeout.Duration)
-	var lastLeader string
-	var lastXfer string
-	nextXfer := time.Time{}
 	for time.Now().Before(deadline) {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return "", ctx.Err()
 		default:
 		}
 		leaderID, err := r.findLeader(trial)
 		if err == nil && leaderID != "" {
-			lastLeader = leaderID
-			if leaderID == trial.Leader {
-				return nil
-			}
-			// Transfer must hit the *current leader* API (not a follower that
-			// merely reported leader_id).
-			if !time.Now().Before(nextXfer) {
-				xferURL := fmt.Sprintf("http://%s:%d/transfer?id=%s",
-					trial.Peers[leaderID], r.Exp.Raft.APIPort, trial.Leader)
-				out, xerr := r.Client.ExecOn(leaderID, httpPostCmd(xferURL))
-				lastXfer = strings.TrimSpace(out)
-				if xerr != nil && lastXfer == "" {
-					lastXfer = xerr.Error()
-				}
-				r.logf("transfer %s -> %s: %s", leaderID, trial.Leader, lastXfer)
-				nextXfer = time.Now().Add(2 * time.Second)
-			}
+			return leaderID, nil
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
-	if lastLeader == "" {
-		return fmt.Errorf("cluster not ready: no leader elected within %s (want %s)",
-			r.Exp.Timing.ClusterReadyTimeout.Duration, trial.Leader)
-	}
-	if lastXfer != "" {
-		return fmt.Errorf("cluster not ready: leader=%s want=%s within %s (last transfer: %s)",
-			lastLeader, trial.Leader, r.Exp.Timing.ClusterReadyTimeout.Duration, lastXfer)
-	}
-	return fmt.Errorf("cluster not ready: leader=%s want=%s within %s",
-		lastLeader, trial.Leader, r.Exp.Timing.ClusterReadyTimeout.Duration)
+	return "", fmt.Errorf("cluster not ready: no leader elected within %s",
+		r.Exp.Timing.ClusterReadyTimeout.Duration)
 }
 
 func (r *Runner) restoreTimeouts(trial Trial) error {

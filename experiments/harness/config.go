@@ -159,9 +159,7 @@ func (e *Experiment) applyDefaults() {
 	if e.Timing.Settle.Duration == 0 {
 		e.Timing.Settle.Duration = 1 * time.Second
 	}
-	if e.Timing.Warmup.Duration == 0 {
-		e.Timing.Warmup.Duration = 3 * time.Second
-	}
+	// Warmup may be 0s to skip pre-inject client load (T3 keeps divergent seeds).
 	if e.Timing.Observe.Duration == 0 {
 		e.Timing.Observe.Duration = 20 * time.Second
 	}

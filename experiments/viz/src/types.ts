@@ -2,7 +2,10 @@ export type Mode = "direct" | "forwarding" | string;
 
 export interface ThroughputBucket {
   offset_s: number;
+  /** Successful commits per second (failures never included). */
   eps: number;
+  /** Failed client submits per second. */
+  fail_eps?: number;
 }
 
 export interface RunRow {
@@ -59,8 +62,19 @@ export interface ConditionAgg {
   meanRecoveryMs: number | null;
   meanElections: number;
   meanTermChanges: number;
+  /** Mean successful-commit throughput (eps); failures excluded upstream. */
   meanThroughput: number;
   meanLatencyMedianMs: number | null;
   meanLatencyP95Ms: number | null;
+  /** client_fail / (ok + fail) in observe window. */
   failRate: number;
+  meanOkObserve: number;
+  meanFailObserve: number;
 }
+
+export type Rq1Verdict =
+  | "both_live"
+  | "fwd_restores"
+  | "direct_only"
+  | "both_dead"
+  | "incomplete";

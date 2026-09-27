@@ -23,7 +23,9 @@ Implements research-plan measurement artifacts and dependent-variable derivation
 | `elections_observe` / `term_changes_observe` | Election / term counts (RQ1) |
 | `stable_progress` | Heuristic liveness flag (RQ1) |
 | `latency_median_ms` / `latency_p95_ms` | Commit latency (RQ2) |
-| `throughput_series` | Commits/sec over observe window |
+| `throughput_series[].eps` | Successful commits/sec (failures excluded) |
+| `throughput_series[].fail_eps` | Failed client submits/sec in the same bucket |
+| `client_ok_observe` / `client_fail_observe` | Observe-window success vs failure counts |
 
 ## Join dataset
 

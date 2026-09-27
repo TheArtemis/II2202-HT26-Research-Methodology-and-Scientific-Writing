@@ -380,3 +380,71 @@ td.neg {
   color: var(--muted);
   margin: 0;
 }
+
+.verdict-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.65rem;
+  margin: 0 0 1.25rem;
+}
+
+.verdict-card {
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  padding: 0.65rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.verdict-topo {
+  font-size: 0.75rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.verdict-card strong {
+  font-size: 0.95rem;
+}
+
+.verdict-meta {
+  font-size: 0.78rem;
+  font-family: var(--mono);
+  color: var(--muted);
+}
+
+.verdict-card.v-fwd_restores {
+  border-color: var(--pos);
+}
+
+.verdict-card.v-both_dead {
+  border-color: var(--neg);
+}
+
+.verdict-card.v-both_live {
+  border-color: var(--accent);
+}
+
+.pill {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.pill.v-fwd_restores {
+  border-color: var(--pos);
+  color: var(--pos);
+}
+
+.pill.v-both_dead {
+  border-color: var(--neg);
+  color: var(--neg);
+}
+
+.pill.v-both_live {
+  border-color: var(--accent);
+  color: var(--accent);
+}

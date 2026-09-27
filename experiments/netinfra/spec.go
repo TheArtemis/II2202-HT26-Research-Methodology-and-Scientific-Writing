@@ -167,6 +167,53 @@ func (s TopologySpec) PlannedFailures() [][2]string {
 	return out
 }
 
+// RemapLeader returns a copy of the topology with the YAML initial_leader role
+// swapped onto actualLeader. Link failure marks and forwarding_routes follow the
+// swap so inject cuts the same relative pattern around whoever was elected.
+func (s TopologySpec) RemapLeader(actualLeader string) TopologySpec {
+	out := s.clone()
+	planned := strings.TrimSpace(s.InitialLeader)
+	actual := strings.TrimSpace(actualLeader)
+	if planned == "" || actual == "" || planned == actual {
+		if actual != "" {
+			out.InitialLeader = actual
+		}
+		return out
+	}
+	rename := func(id string) string {
+		switch id {
+		case planned:
+			return actual
+		case actual:
+			return planned
+		default:
+			return id
+		}
+	}
+	for i := range out.Links {
+		out.Links[i].Endpoints[0] = rename(out.Links[i].Endpoints[0])
+		out.Links[i].Endpoints[1] = rename(out.Links[i].Endpoints[1])
+	}
+	for i := range out.ForwardingRoutes {
+		out.ForwardingRoutes[i].Node = rename(out.ForwardingRoutes[i].Node)
+		out.ForwardingRoutes[i].Dest = rename(out.ForwardingRoutes[i].Dest)
+		out.ForwardingRoutes[i].Via = rename(out.ForwardingRoutes[i].Via)
+	}
+	out.InitialLeader = actual
+	return out
+}
+
+func (s TopologySpec) clone() TopologySpec {
+	out := s
+	out.Nodes = append([]string(nil), s.Nodes...)
+	out.Links = append([]LinkSpec(nil), s.Links...)
+	for i := range out.Links {
+		out.Links[i].Endpoints = append([]string(nil), s.Links[i].Endpoints...)
+	}
+	out.ForwardingRoutes = append([]ForwardingRoute(nil), s.ForwardingRoutes...)
+	return out
+}
+
 // IdentityIP returns the stable Raft address for node (A→.1, B→.2, … in Nodes order).
 func (s TopologySpec) IdentityIP(node string) (string, error) {
 	idx := -1

@@ -120,10 +120,12 @@ type RunMetrics struct {
 	HostOverloaded bool     `json:"host_overloaded,omitempty"`
 }
 
-// ThroughputBucket is commits/sec in a 1-second observe slice.
+// ThroughputBucket is rates in a 1-second observe slice.
+// EPS counts successful client commits only; FailEPS counts failed submits.
 type ThroughputBucket struct {
 	OffsetS float64 `json:"offset_s"`
 	EPS     float64 `json:"eps"`
+	FailEPS float64 `json:"fail_eps"`
 }
 
 // AnalyzeRunDir computes metrics from a harness run directory.
@@ -358,19 +360,39 @@ func throughputSeries(clients []ClientRecord, injectNS, observeEnd int64) []Thro
 	if buckets > 600 {
 		buckets = 600
 	}
-	counts := make([]int, buckets)
+	okCounts := make([]int, buckets)
+	failCounts := make([]int, buckets)
 	for _, rec := range clients {
-		if !rec.OK || rec.CommitNS < injectNS || rec.CommitNS > observeEnd {
+		if rec.OK {
+			// Successful commits only — never count failures in EPS.
+			if rec.CommitNS < injectNS || rec.CommitNS > observeEnd {
+				continue
+			}
+			b := int((rec.CommitNS - injectNS) / int64(time.Second))
+			if b >= 0 && b < len(okCounts) {
+				okCounts[b]++
+			}
 			continue
 		}
-		b := int((rec.CommitNS - injectNS) / int64(time.Second))
-		if b >= 0 && b < len(counts) {
-			counts[b]++
+		ts := rec.SubmitNS
+		if ts <= 0 {
+			continue
+		}
+		if ts < injectNS || ts > observeEnd {
+			continue
+		}
+		b := int((ts - injectNS) / int64(time.Second))
+		if b >= 0 && b < len(failCounts) {
+			failCounts[b]++
 		}
 	}
-	out := make([]ThroughputBucket, 0, len(counts))
-	for i, c := range counts {
-		out = append(out, ThroughputBucket{OffsetS: float64(i), EPS: float64(c)})
+	out := make([]ThroughputBucket, 0, len(okCounts))
+	for i := range okCounts {
+		out = append(out, ThroughputBucket{
+			OffsetS: float64(i),
+			EPS:     float64(okCounts[i]),
+			FailEPS: float64(failCounts[i]),
+		})
 	}
 	return out
 }

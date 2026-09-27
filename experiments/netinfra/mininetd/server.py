@@ -64,6 +64,13 @@ class MininetDaemon:
         if method == "SetMode":
             self.rt.apply_mode(params["mode"])
             return {"ok": True, "mode": self.rt.mode}
+        if method == "SetForwardingRoutes":
+            routes = params.get("routes") or []
+            if not isinstance(routes, list):
+                raise ValueError("routes must be a list")
+            self.rt.topo["forwarding_routes"] = routes
+            self.rt.apply_mode(self.rt.mode)
+            return {"ok": True, "count": len(routes)}
         if method == "Exec":
             out, code = self.rt.exec(params["node"], params["cmd"])
             return {"stdout": out, "code": code}

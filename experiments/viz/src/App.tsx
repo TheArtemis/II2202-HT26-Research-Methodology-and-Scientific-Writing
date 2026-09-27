@@ -9,12 +9,15 @@ import {
   rq1Pairs,
   rq2LatencyByDelay,
   uniqueSorted,
+  verdictLabel,
 } from "./aggregate";
 import { GroupedBarChart, HeatCell, LineChart, SimpleBars } from "./charts";
 import type { Filters, RunRow } from "./types";
 
 const DIRECT = "#1d4ed8";
 const FWD = "#b45309";
+const FAIL_D = "#64748b";
+const FAIL_F = "#9a3412";
 
 const emptyFilters: Filters = { topologies: [], delays: [], heartbeats: [] };
 
@@ -65,10 +68,9 @@ export default function App() {
   const latRows = useMemo(() => rq2LatencyByDelay(aggs), [aggs]);
   const thrSeries = useMemo(() => avgThroughputSeries(filtered), [filtered]);
 
-  const stableDirect = pairs.filter((p) => p.directStable != null);
-  const restored = pairs.filter(
-    (p) => p.directStable != null && p.fwdStable != null && p.directStable < 0.5 && p.fwdStable >= 0.5,
-  );
+  const restored = pairs.filter((p) => p.verdict === "fwd_restores");
+  const bothLive = pairs.filter((p) => p.verdict === "both_live");
+  const bothDead = pairs.filter((p) => p.verdict === "both_dead");
   const meanLatDelta = (() => {
     const deltas = latRows
       .filter((r) => r.directMed != null && r.fwdMed != null)
@@ -76,6 +78,9 @@ export default function App() {
     if (deltas.length === 0) return null;
     return deltas.reduce((a, b) => a + b, 0) / deltas.length;
   })();
+
+  const totalOk = filtered.reduce((s, r) => s + (r.client_ok_observe || 0), 0);
+  const totalFail = filtered.reduce((s, r) => s + (r.client_fail_observe || 0), 0);
 
   const toggle = (key: keyof Filters, value: string) => {
     setFilters((prev) => {
@@ -93,7 +98,8 @@ export default function App() {
         <h1>Results explorer</h1>
         <p className="lede">
           Load a <code>dataset.jsonl</code> from <code>harness summarize</code> to compare direct vs
-          forwarding for RQ1 (liveness) and RQ2 (commit latency).
+          forwarding for RQ1 (liveness) and RQ2 (commit latency). Throughput uses successful commits
+          only; failures are plotted separately.
         </p>
         <div className="load-row">
           <label className="file-btn">
@@ -150,23 +156,49 @@ export default function App() {
             <section className="panel">
               <h2>RQ1 — When does forwarding restore stable progress?</h2>
               <p className="hint">
-                Stable progress = recovered after inject, observe-window commits, limited election churn
-                (see <code>metrics.stable_progress</code>).
+                Research-plan RQ1 / H1: across T1–T4, where does multi-hop routing restore stable Raft
+                progress vs direct-only? Verdicts use mean <code>stable_progress</code> (≥50% live).
+                Commit throughput counts successful observe commits only.
               </p>
 
               <div className="stat-row">
                 <div className="stat">
-                  <span className="stat-label">Conditions compared</span>
-                  <strong>{pairs.length}</strong>
+                  <span className="stat-label">Fwd restores (H1 hit)</span>
+                  <strong>
+                    {restored.length === 0
+                      ? "—"
+                      : restored.map((r) => `${r.topology}@${r.delay}`).join(", ")}
+                  </strong>
                 </div>
                 <div className="stat">
-                  <span className="stat-label">Forwarding restores (direct &lt;50%, fwd ≥50%)</span>
-                  <strong>{restored.length === 0 ? "—" : restored.map((r) => r.topology).join(", ")}</strong>
+                  <span className="stat-label">Both live / neither</span>
+                  <strong>
+                    {bothLive.length}/{bothDead.length}
+                  </strong>
                 </div>
                 <div className="stat">
-                  <span className="stat-label">Filtered runs</span>
-                  <strong>{filtered.length}</strong>
+                  <span className="stat-label">Observe OK / fail (filtered)</span>
+                  <strong>
+                    {totalOk.toLocaleString()} / {totalFail.toLocaleString()}
+                  </strong>
                 </div>
+              </div>
+
+              <div className="verdict-grid">
+                {pairs.map((p) => (
+                  <div
+                    key={`${p.topology}|${p.delay}|${p.heartbeat}`}
+                    className={`verdict-card v-${p.verdict}`}
+                  >
+                    <span className="verdict-topo">
+                      {p.topology} · {p.delay}
+                    </span>
+                    <strong>{verdictLabel(p.verdict)}</strong>
+                    <span className="verdict-meta">
+                      direct {fmtPct(p.directStable)} · fwd {fmtPct(p.fwdStable)}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               <GroupedBarChart
@@ -181,17 +213,48 @@ export default function App() {
                 }))}
               />
 
+              <GroupedBarChart
+                title="Successful commit throughput (observe, commits/s) — failures excluded"
+                yLabel="commits/s"
+                groups={pairs.map((p) => ({
+                  label: `${p.topology}\n${p.delay}`,
+                  series: [
+                    { name: "direct OK", value: p.directThr, color: DIRECT },
+                    { name: "forwarding OK", value: p.fwdThr, color: FWD },
+                  ],
+                }))}
+              />
+
+              <GroupedBarChart
+                title="Client failure rate in observe window"
+                yLabel="Fail fraction"
+                groups={pairs.map((p) => ({
+                  label: p.topology,
+                  series: [
+                    { name: "direct fail rate", value: p.directFailRate, color: FAIL_D },
+                    { name: "forwarding fail rate", value: p.fwdFailRate, color: FAIL_F },
+                  ],
+                }))}
+              />
+
               <div className="table-wrap">
                 <table>
-                  <caption>Direct vs forwarding — stable fraction and recovery</caption>
+                  <caption>
+                    RQ1 condition matrix — stable fraction, OK throughput, fail rate, recovery
+                  </caption>
                   <thead>
                     <tr>
                       <th>Topology</th>
                       <th>Delay</th>
-                      <th>HB</th>
+                      <th>Verdict</th>
                       <th>Direct stable</th>
                       <th>Fwd stable</th>
-                      <th>Δ (fwd−dir)</th>
+                      <th>Direct thr</th>
+                      <th>Fwd thr</th>
+                      <th>Direct fail%</th>
+                      <th>Fwd fail%</th>
+                      <th>Recov. dir ms</th>
+                      <th>Recov. fwd ms</th>
                       <th>n</th>
                     </tr>
                   </thead>
@@ -200,12 +263,17 @@ export default function App() {
                       <tr key={`${p.topology}|${p.delay}|${p.heartbeat}`}>
                         <td>{p.topology}</td>
                         <td>{p.delay}</td>
-                        <td>{p.heartbeat}</td>
+                        <td>
+                          <span className={`pill v-${p.verdict}`}>{verdictLabel(p.verdict)}</span>
+                        </td>
                         <HeatCell value={p.directStable} label="direct" />
                         <HeatCell value={p.fwdStable} label="forwarding" />
-                        <td className={p.delta != null && p.delta > 0 ? "pos" : p.delta != null && p.delta < 0 ? "neg" : ""}>
-                          {fmtPct(p.delta)}
-                        </td>
+                        <td>{fmtNum(p.directThr, 1)}</td>
+                        <td>{fmtNum(p.fwdThr, 1)}</td>
+                        <td>{fmtPct(p.directFailRate)}</td>
+                        <td>{fmtPct(p.fwdFailRate)}</td>
+                        <td>{fmtNum(p.directRecoveryMs, 1)}</td>
+                        <td>{fmtNum(p.fwdRecoveryMs, 1)}</td>
                         <td>
                           {p.directN}/{p.fwdN}
                         </td>
@@ -239,31 +307,48 @@ export default function App() {
               </div>
 
               {thrSeries.length > 1 && (
-                <LineChart
-                  title="Commit throughput over observe window (avg commits/s)"
-                  yLabel="commits/s"
-                  xLabel="Seconds since inject"
-                  series={[
-                    {
-                      name: "direct",
-                      color: DIRECT,
-                      points: thrSeries.map((p) => ({ x: p.t, y: p.direct })),
-                    },
-                    {
-                      name: "forwarding",
-                      color: FWD,
-                      points: thrSeries.map((p) => ({ x: p.t, y: p.fwd })),
-                    },
-                  ]}
-                />
+                <>
+                  <LineChart
+                    title="Successful commits/s after inject (failures excluded)"
+                    yLabel="OK commits/s"
+                    xLabel="Seconds since inject"
+                    series={[
+                      {
+                        name: "direct OK",
+                        color: DIRECT,
+                        points: thrSeries.map((p) => ({ x: p.t, y: p.directOk })),
+                      },
+                      {
+                        name: "forwarding OK",
+                        color: FWD,
+                        points: thrSeries.map((p) => ({ x: p.t, y: p.fwdOk })),
+                      },
+                    ]}
+                  />
+                  <LineChart
+                    title="Failed client submits/s after inject"
+                    yLabel="failures/s"
+                    xLabel="Seconds since inject"
+                    series={[
+                      {
+                        name: "direct fails",
+                        color: FAIL_D,
+                        points: thrSeries.map((p) => ({ x: p.t, y: p.directFail })),
+                      },
+                      {
+                        name: "forwarding fails",
+                        color: FAIL_F,
+                        points: thrSeries.map((p) => ({ x: p.t, y: p.fwdFail })),
+                      },
+                    ]}
+                  />
+                </>
               )}
 
-              {stableDirect.length > 0 && (
-                <p className="caption">
-                  Source: harness <code>dataset.jsonl</code> · filtered subset · bar height = fraction of
-                  repetitions with <code>stable_progress</code>.
-                </p>
-              )}
+              <p className="caption">
+                Source: harness <code>dataset.jsonl</code> · re-run <code>harness summarize</code> after
+                updating collect to refresh <code>fail_eps</code> in throughput series.
+              </p>
             </section>
           )}
 
@@ -271,14 +356,18 @@ export default function App() {
             <section className="panel">
               <h2>RQ2 — How does path delay affect commit latency?</h2>
               <p className="hint">
-                Client-side median and p95 latency in the post-inject observe window. T1 is a control
+                Client-side median and p95 latency on successful observe commits only. T1 is a control
                 (leader keeps a direct quorum); T2–T4 may require a forwarded follower for majority.
               </p>
 
               <div className="stat-row">
                 <div className="stat">
                   <span className="stat-label">Mean Δ median latency (fwd − direct)</span>
-                  <strong>{meanLatDelta == null ? "—" : `${meanLatDelta >= 0 ? "+" : ""}${fmtNum(meanLatDelta)} ms`}</strong>
+                  <strong>
+                    {meanLatDelta == null
+                      ? "—"
+                      : `${meanLatDelta >= 0 ? "+" : ""}${fmtNum(meanLatDelta)} ms`}
+                  </strong>
                 </div>
                 <div className="stat">
                   <span className="stat-label">Latency samples (observe OK)</span>
@@ -346,8 +435,8 @@ export default function App() {
                 </table>
               </div>
               <p className="caption">
-                Values in ms · client timestamps only (RQ2) · compare forwarding cost when delay and
-                topology force multi-hop quorum members.
+                Values in ms · successful commits only · compare forwarding cost when delay and topology
+                force multi-hop quorum members.
               </p>
             </section>
           )}
@@ -367,31 +456,38 @@ export default function App() {
                       <th>Recovery ms</th>
                       <th>Elect</th>
                       <th>Terms</th>
-                      <th>Thr put</th>
+                      <th>OK thr</th>
                       <th>Lat med</th>
                       <th>Lat p95</th>
-                      <th>OK/Fail</th>
+                      <th>OK</th>
+                      <th>Fail</th>
+                      <th>Fail%</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filtered.map((r) => (
-                      <tr key={r.run_id}>
-                        <td className="mono">{r.run_id}</td>
-                        <td>{r.topology}</td>
-                        <td>{r.mode}</td>
-                        <td>{r.delay}</td>
-                        <td>{r.stable_progress ? "yes" : "no"}</td>
-                        <td>{fmtNum(r.recovery_time_ms)}</td>
-                        <td>{r.elections_observe}</td>
-                        <td>{r.term_changes_observe}</td>
-                        <td>{fmtNum(r.commit_throughput_observe_eps, 1)}</td>
-                        <td>{fmtNum(r.latency_median_ms)}</td>
-                        <td>{fmtNum(r.latency_p95_ms)}</td>
-                        <td>
-                          {r.client_ok_observe}/{r.client_fail_observe}
-                        </td>
-                      </tr>
-                    ))}
+                    {filtered.map((r) => {
+                      const ok = r.client_ok_observe || 0;
+                      const fail = r.client_fail_observe || 0;
+                      const fr = ok + fail > 0 ? fail / (ok + fail) : null;
+                      return (
+                        <tr key={r.run_id}>
+                          <td className="mono">{r.run_id}</td>
+                          <td>{r.topology}</td>
+                          <td>{r.mode}</td>
+                          <td>{r.delay}</td>
+                          <td>{r.stable_progress ? "yes" : "no"}</td>
+                          <td>{fmtNum(r.recovery_time_ms)}</td>
+                          <td>{r.elections_observe}</td>
+                          <td>{r.term_changes_observe}</td>
+                          <td>{fmtNum(r.commit_throughput_observe_eps, 1)}</td>
+                          <td>{fmtNum(r.latency_median_ms)}</td>
+                          <td>{fmtNum(r.latency_p95_ms)}</td>
+                          <td>{ok}</td>
+                          <td className={fail > 0 ? "neg" : ""}>{fail}</td>
+                          <td>{fmtPct(fr)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

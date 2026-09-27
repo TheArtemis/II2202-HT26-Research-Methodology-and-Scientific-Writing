@@ -35,4 +35,8 @@ type Controller interface {
 
 	// InjectPlannedFailures brings down every link marked failed in the YAML.
 	InjectPlannedFailures() error
+
+	// InjectAroundLeader remaps YAML failure marks (and forwarding routes) so the
+	// cut pattern is centered on actualLeader, then brings those links down.
+	InjectAroundLeader(actualLeader string) error
 }

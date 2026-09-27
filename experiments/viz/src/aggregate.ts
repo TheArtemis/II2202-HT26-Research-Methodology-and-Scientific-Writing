@@ -1,4 +1,4 @@
-import type { ConditionAgg, ConditionKey, Filters, RunRow } from "./types";
+import type { ConditionAgg, ConditionKey, Filters, Rq1Verdict, RunRow } from "./types";
 
 export function parseDatasetJSONL(text: string): RunRow[] {
   const rows: RunRow[] = [];
@@ -62,8 +62,8 @@ export function aggregateByCondition(rows: RunRow[]): ConditionAgg[] {
     const latP95 = group
       .map((r) => r.latency_p95_ms)
       .filter((v): v is number => v != null && Number.isFinite(v));
-    const fails = group.reduce((s, r) => s + r.client_fail_observe, 0);
-    const oks = group.reduce((s, r) => s + r.client_ok_observe, 0);
+    const fails = group.reduce((s, r) => s + (r.client_fail_observe || 0), 0);
+    const oks = group.reduce((s, r) => s + (r.client_ok_observe || 0), 0);
     out.push({
       key,
       n: group.length,
@@ -75,6 +75,8 @@ export function aggregateByCondition(rows: RunRow[]): ConditionAgg[] {
       meanLatencyMedianMs: mean(latMed),
       meanLatencyP95Ms: mean(latP95),
       failRate: oks + fails > 0 ? fails / (oks + fails) : 0,
+      meanOkObserve: mean(group.map((r) => r.client_ok_observe || 0)) ?? 0,
+      meanFailObserve: mean(group.map((r) => r.client_fail_observe || 0)) ?? 0,
     });
   }
   return out.sort((a, b) => {
@@ -84,7 +86,6 @@ export function aggregateByCondition(rows: RunRow[]): ConditionAgg[] {
   });
 }
 
-/** RQ1: for each topology (× delay × hb), compare forwarding vs direct stable fraction. */
 export function rq1Pairs(aggs: ConditionAgg[]): {
   topology: string;
   delay: string;
@@ -94,6 +95,13 @@ export function rq1Pairs(aggs: ConditionAgg[]): {
   delta: number | null;
   directN: number;
   fwdN: number;
+  directThr: number | null;
+  fwdThr: number | null;
+  directFailRate: number | null;
+  fwdFailRate: number | null;
+  directRecoveryMs: number | null;
+  fwdRecoveryMs: number | null;
+  verdict: Rq1Verdict;
 }[] {
   const map = new Map<string, { direct?: ConditionAgg; fwd?: ConditionAgg }>();
   for (const a of aggs) {
@@ -117,9 +125,42 @@ export function rq1Pairs(aggs: ConditionAgg[]): {
       delta: d != null && f != null ? f - d : null,
       directN: v.direct?.n ?? 0,
       fwdN: v.fwd?.n ?? 0,
+      directThr: v.direct?.meanThroughput ?? null,
+      fwdThr: v.fwd?.meanThroughput ?? null,
+      directFailRate: v.direct?.failRate ?? null,
+      fwdFailRate: v.fwd?.failRate ?? null,
+      directRecoveryMs: v.direct?.meanRecoveryMs ?? null,
+      fwdRecoveryMs: v.fwd?.meanRecoveryMs ?? null,
+      verdict: rq1Verdict(d, f),
     });
   }
   return out.sort((a, b) => a.topology.localeCompare(b.topology));
+}
+
+/** RQ1 H1-style classification from mean stable fractions. */
+export function rq1Verdict(directStable: number | null, fwdStable: number | null): Rq1Verdict {
+  if (directStable == null || fwdStable == null) return "incomplete";
+  const dLive = directStable >= 0.5;
+  const fLive = fwdStable >= 0.5;
+  if (!dLive && fLive) return "fwd_restores";
+  if (dLive && fLive) return "both_live";
+  if (dLive && !fLive) return "direct_only";
+  return "both_dead";
+}
+
+export function verdictLabel(v: Rq1Verdict): string {
+  switch (v) {
+    case "fwd_restores":
+      return "Forwarding restores";
+    case "both_live":
+      return "Both live";
+    case "direct_only":
+      return "Direct only";
+    case "both_dead":
+      return "Neither stable";
+    default:
+      return "Incomplete pair";
+  }
 }
 
 /** RQ2: latency by delay × mode (optionally within topology). */
@@ -156,7 +197,13 @@ export function rq2LatencyByDelay(aggs: ConditionAgg[]): {
   );
 }
 
-export function avgThroughputSeries(rows: RunRow[]): { t: number; direct: number | null; fwd: number | null }[] {
+export function avgThroughputSeries(rows: RunRow[]): {
+  t: number;
+  directOk: number | null;
+  fwdOk: number | null;
+  directFail: number | null;
+  fwdFail: number | null;
+}[] {
   const byMode = {
     direct: rows.filter((r) => r.mode === "direct"),
     forwarding: rows.filter((r) => r.mode === "forwarding"),
@@ -167,14 +214,24 @@ export function avgThroughputSeries(rows: RunRow[]): { t: number; direct: number
   );
   const out = [];
   for (let t = 0; t <= maxT; t++) {
-    const avgAt = (mode: "direct" | "forwarding") => {
+    const avgAt = (mode: "direct" | "forwarding", field: "eps" | "fail_eps") => {
       const vals = byMode[mode]
-        .map((r) => r.throughput_series?.find((b) => b.offset_s === t)?.eps)
+        .map((r) => {
+          const b = r.throughput_series?.find((x) => x.offset_s === t);
+          if (!b) return undefined;
+          return field === "eps" ? b.eps : (b.fail_eps ?? 0);
+        })
         .filter((v): v is number => v != null);
       if (vals.length === 0) return null;
       return vals.reduce((a, b) => a + b, 0) / vals.length;
     };
-    out.push({ t, direct: avgAt("direct"), fwd: avgAt("forwarding") });
+    out.push({
+      t,
+      directOk: avgAt("direct", "eps"),
+      fwdOk: avgAt("forwarding", "eps"),
+      directFail: avgAt("direct", "fail_eps"),
+      fwdFail: avgAt("forwarding", "fail_eps"),
+    });
   }
   return out;
 }

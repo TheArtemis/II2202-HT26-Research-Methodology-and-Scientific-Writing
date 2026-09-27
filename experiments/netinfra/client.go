@@ -282,6 +282,31 @@ func (c *Client) InjectPlannedFailures() error {
 	return nil
 }
 
+// InjectAroundLeader implements Controller.
+func (c *Client) InjectAroundLeader(actualLeader string) error {
+	remapped := c.topo.RemapLeader(actualLeader)
+	routes := make([]map[string]string, 0, len(remapped.ForwardingRoutes))
+	for _, r := range remapped.ForwardingRoutes {
+		routes = append(routes, map[string]string{
+			"node": r.Node,
+			"dest": r.Dest,
+			"via":  r.Via,
+		})
+	}
+	if err := c.call(context.Background(), "SetForwardingRoutes", map[string]interface{}{
+		"routes": routes,
+	}, nil); err != nil {
+		return fmt.Errorf("set forwarding routes: %w", err)
+	}
+	c.topo.ForwardingRoutes = remapped.ForwardingRoutes
+	for _, pair := range remapped.PlannedFailures() {
+		if err := c.SetLink(pair[0], pair[1], false); err != nil {
+			return fmt.Errorf("inject %s--%s (around %s): %w", pair[0], pair[1], actualLeader, err)
+		}
+	}
+	return nil
+}
+
 // ActiveTopo returns the last started topology (empty if none).
 func (c *Client) ActiveTopo() TopologySpec { return c.topo }
 
