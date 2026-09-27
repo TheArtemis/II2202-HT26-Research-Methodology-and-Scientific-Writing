@@ -72,10 +72,12 @@ type RaftConfig struct {
 
 // QAConfig gates trial acceptance.
 type QAConfig struct {
-	ValidateAfterInject  bool `yaml:"validate_after_inject"`
-	RequireWarmupCommits bool `yaml:"require_warmup_commits"`
-	MinWarmupOK          int  `yaml:"min_warmup_ok"`
-	ContinueOnError      bool `yaml:"continue_on_error"`
+	ValidateAfterInject  bool    `yaml:"validate_after_inject"`
+	RequireWarmupCommits bool    `yaml:"require_warmup_commits"`
+	MinWarmupOK          int     `yaml:"min_warmup_ok"`
+	ContinueOnError      bool    `yaml:"continue_on_error"`
+	HostLoadMax1m        float64 `yaml:"host_load_max_1m"` // 0 = disabled; marks host_overloaded in metrics
+	HostLoadInterval     Duration `yaml:"host_load_interval"`
 }
 
 // SeedsConfig records reproducible seeds (seed = base + trial index).
@@ -189,6 +191,9 @@ func (e *Experiment) applyDefaults() {
 	}
 	if e.QA.MinWarmupOK == 0 {
 		e.QA.MinWarmupOK = 5
+	}
+	if e.QA.HostLoadInterval.Duration == 0 {
+		e.QA.HostLoadInterval.Duration = time.Second
 	}
 }
 

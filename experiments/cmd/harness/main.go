@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing/experiments/collect"
 	"github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing/experiments/harness"
 	"github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing/experiments/netinfra"
 )
@@ -27,6 +28,8 @@ func main() {
 		err = cmdDryRun(args)
 	case "run":
 		err = cmdRun(args)
+	case "summarize":
+		err = cmdSummarize(args)
 	case "help", "-h", "--help":
 		usage()
 	default:
@@ -47,11 +50,15 @@ Usage:
   harness list <config.yaml>              # print expanded trial run IDs
   harness dry-run <config.yaml>           # validate + expand, no Mininet
   harness run <config.yaml> [flags]       # execute trials (requires mininetd)
+  harness summarize <results/dir>         # join runs → dataset.jsonl + dataset.csv
 
 Flags for run:
   --from N     skip first N trials (0-based index)
   --limit N    run at most N trials (0 = all)
   --addr ADDR  mininetd unix socket or host:port
+
+Flags for summarize:
+  --host-load-max F   mark host_overloaded when load1 exceeds F (0=off)
 
 Configs:
   configs/smoke.yaml            # T4 × 2 modes × 1 rep
@@ -66,6 +73,7 @@ Typical pilot sequence (Linux VM):
   go build -o bin/harness ./cmd/harness
   ./bin/harness dry-run configs/smoke.yaml
   ./bin/harness run configs/smoke.yaml
+  ./bin/harness summarize results/smoke
   ./bin/harness run configs/pilot.yaml
 `)
 }
@@ -177,6 +185,24 @@ func cmdRun(args []string) error {
 
 	fmt.Fprintf(os.Stderr, "harness run %s: %d trials → %s\n", exp.Name, len(trials), exp.OutputDir)
 	return runner.RunAll(ctx, trials)
+}
+
+func cmdSummarize(args []string) error {
+	fs := flag.NewFlagSet("summarize", flag.ContinueOnError)
+	hostMax := fs.Float64("host-load-max", 0, "overload threshold for load1 (0=off)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() < 1 {
+		return fmt.Errorf("usage: harness summarize <results/dir>")
+	}
+	dir := fs.Arg(0)
+	n, err := collect.JoinDataset(dir, *hostMax)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("summarize: %d runs → %s/dataset.jsonl + dataset.csv\n", n, dir)
+	return nil
 }
 
 func parseConfigArgs(args []string) (path string, rest []string, err error) {

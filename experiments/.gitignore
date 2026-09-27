@@ -5,6 +5,10 @@
 # Experiment outputs
 /results/
 
+# Viz
+/viz/node_modules/
+/viz/dist/
+
 # Python
 __pycache__/
 *.pyc

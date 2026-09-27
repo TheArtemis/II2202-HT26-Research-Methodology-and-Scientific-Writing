@@ -3,12 +3,13 @@
 Orchestrates the research-plan trial loop against Mininet + HashiCorp Raft:
 
 1. Start topology (all links up) at configured per-link delay and mode  
-2. Start `raftd` on each host (`-prefer-leader` on YAML `initial_leader`)  
-3. Start open-loop `raftclient` inside the client node (default: initial leader)  
-4. Warm up and require successful commits  
-5. Inject planned link failures; optional connectivity validate  
-6. Observe for configured duration  
-7. Stop processes, archive JSONL/logs under `output_dir/<run_id>/`, tear down  
+2. Start `raftd` on each host (non-preferred get a long `-election`, which also defers follower campaigns because HashiCorp uses HeartbeatTimeout to start elections; preferred gets `-prefer-leader`)
+3. Wait until all `/health` endpoints respond, then until the planned initial leader holds office (transfer via `POST /transfer?id=<preferred>` on the *current* leader if needed); then `POST /timeouts` restores the matrix heartbeat on every node
+4. Start open-loop `raftclient` inside the client node (default: initial leader)  
+5. Warm up and require successful commits  
+6. Inject planned link failures; optional connectivity validate  
+7. Observe for configured duration  
+8. Stop processes, archive JSONL/logs under `output_dir/<run_id>/`, tear down  
 
 ## Configs
 
@@ -61,15 +62,25 @@ sudo python3 netinfra/mininetd/server.py --socket /tmp/mininetd.sock &
 
 ```
 results/pilot/
-  experiment.yaml          # frozen batch config
-  manifest.jsonl           # one status line per trial
+  experiment.yaml
+  manifest.jsonl
+  dataset.jsonl / dataset.csv   # after: harness summarize
   T4_forwarding_d5ms_hb10ms_r01/
     meta.yaml
     status.json
-    client.jsonl           # RQ2 latency
-    events-A.jsonl …       # RQ1 leader/term/commit
-    raftd-A.log …
-    client.log
+    timeline.json               # phase markers (inject_at_ns, …)
+    hostload.jsonl              # controller load samples
+    client.jsonl                # RQ2 raw
+    client_enriched.jsonl       # + phase tags
+    events-A.jsonl …            # RQ1 raw (leader/term/election/commit)
+    metrics.json                # derived DVs
+    raftd-*.log / client.log
+```
+
+After a batch:
+
+```bash
+./bin/harness summarize results/pilot
 ```
 
 ## Unit tests (no Mininet)

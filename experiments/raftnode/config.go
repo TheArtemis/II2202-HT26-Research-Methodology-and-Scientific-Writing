@@ -33,7 +33,9 @@ type Config struct {
 	ElectionTimeout time.Duration
 	// PreferLeader shortens this node's election timeout so it wins warm-up.
 	PreferLeader bool
-	// Bootstrap writes the initial cluster configuration if stores are empty.
+	// NetworkDelay is the emulated per-link delay; used to keep election ≫ RTT.
+	NetworkDelay time.Duration
+	// Bootstrap writes the initial cluster configuration when stores are empty.
 	Bootstrap bool
 	// DataDir holds bolt/snapshot state. Empty → in-memory stores (clean runs).
 	DataDir string

@@ -24,6 +24,7 @@ const (
 // Event is one Raft observation written as JSONL.
 type Event struct {
 	TS     time.Time `json:"ts"`
+	TSNS   int64     `json:"ts_ns"`
 	Type   EventType `json:"type"`
 	Node   string    `json:"node"`
 	Leader string    `json:"leader,omitempty"`
@@ -74,8 +75,12 @@ func (el *EventLogger) Close() error {
 func (el *EventLogger) Log(ev Event) {
 	el.mu.Lock()
 	defer el.mu.Unlock()
+	now := time.Now().UTC()
 	if ev.TS.IsZero() {
-		ev.TS = time.Now().UTC()
+		ev.TS = now
+	}
+	if ev.TSNS == 0 {
+		ev.TSNS = now.UnixNano()
 	}
 	ev.Node = el.node
 	b, err := json.Marshal(ev)
@@ -150,12 +155,17 @@ func (el *EventLogger) handleObservation(r *raft.Raft, o raft.Observation) {
 		}
 		el.mu.Unlock()
 		if termChanged {
-			el.Log(Event{Type: EventTerm, Term: term, Leader: string(r.Leader())})
+			el.Log(Event{Type: EventTerm, Term: term, Leader: leaderIDString(r)})
 			if term > prevTerm {
 				el.Log(Event{Type: EventElection, Term: term})
 			}
 		}
 	}
+}
+
+func leaderIDString(r *raft.Raft) string {
+	_, id := r.LeaderWithID()
+	return string(id)
 }
 
 func (el *EventLogger) pollCommits(r *raft.Raft) {
@@ -169,11 +179,12 @@ func (el *EventLogger) pollCommits(r *raft.Raft) {
 		case <-t.C:
 			idx := r.AppliedIndex()
 			if idx > last {
+				_, leaderID := r.LeaderWithID()
 				el.Log(Event{
 					Type:   EventCommit,
 					Index:  idx,
 					Term:   r.CurrentTerm(),
-					Leader: string(r.Leader()),
+					Leader: string(leaderID),
 				})
 				last = idx
 			}

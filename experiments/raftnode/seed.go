@@ -2,6 +2,7 @@ package raftnode
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/hashicorp/raft"
 )
@@ -27,7 +28,6 @@ func seedStores(logs raft.LogStore, stable raft.StableStore, peers map[string]st
 	cfgData := raft.EncodeConfiguration(configuration)
 
 	entries := make([]*raft.Log, 0, len(seed))
-	// Index 1: configuration using first seed term.
 	entries = append(entries, &raft.Log{
 		Index: 1,
 		Term:  seed[0],
@@ -52,12 +52,17 @@ func clusterConfiguration(peers map[string]string, raftPort int) raft.Configurat
 	if raftPort == 0 {
 		raftPort = DefaultRaftPort
 	}
-	servers := make([]raft.Server, 0, len(peers))
-	for id, ip := range peers {
+	ids := make([]string, 0, len(peers))
+	for id := range peers {
+		ids = append(ids, id)
+	}
+	sort.Strings(ids)
+	servers := make([]raft.Server, 0, len(ids))
+	for _, id := range ids {
 		servers = append(servers, raft.Server{
 			Suffrage: raft.Voter,
 			ID:       raft.ServerID(id),
-			Address:  raft.ServerAddress(fmt.Sprintf("%s:%d", ip, raftPort)),
+			Address:  raft.ServerAddress(fmt.Sprintf("%s:%d", peers[id], raftPort)),
 		})
 	}
 	return raft.Configuration{Servers: servers}

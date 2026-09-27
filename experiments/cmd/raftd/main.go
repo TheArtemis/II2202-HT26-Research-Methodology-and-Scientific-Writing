@@ -20,6 +20,7 @@ func main() {
 	election := flag.Duration("election", 0, "election timeout (default 5× heartbeat, min 50ms)")
 	bootstrap := flag.Bool("bootstrap", true, "bootstrap cluster config when stores are empty")
 	prefer := flag.Bool("prefer-leader", false, "shorten election timeout to win warm-up leadership")
+	netDelay := flag.Duration("network-delay", 0, "emulated per-link delay (scales election timeout)")
 	dataDir := flag.String("data-dir", "", "optional data dir (default: in-memory stores)")
 	events := flag.String("events", "", "JSONL event log path (default: stderr)")
 	seedLog := flag.String("seed-log", "", "optional T3 seed terms, e.g. 1,1,2,2")
@@ -48,6 +49,7 @@ func main() {
 		Heartbeat:       *heartbeat,
 		ElectionTimeout: *election,
 		PreferLeader:    *prefer,
+		NetworkDelay:    *netDelay,
 		Bootstrap:       *bootstrap,
 		DataDir:         *dataDir,
 		EventsPath:      *events,
@@ -60,8 +62,8 @@ func main() {
 	}
 	defer n.Close()
 
-	fmt.Fprintf(os.Stderr, "raftd id=%s raft=%s api=%s heartbeat=%s prefer_leader=%v\n",
-		cfg.ID, cfg.RaftAddr(), cfg.APIAddr(), cfg.Heartbeat, cfg.PreferLeader)
+	fmt.Fprintf(os.Stderr, "raftd id=%s raft=%s api=%s heartbeat=%s election=%s net_delay=%s prefer_leader=%v\n",
+		cfg.ID, cfg.RaftAddr(), cfg.APIAddr(), cfg.Heartbeat, cfg.ElectionTimeout, cfg.NetworkDelay, cfg.PreferLeader)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

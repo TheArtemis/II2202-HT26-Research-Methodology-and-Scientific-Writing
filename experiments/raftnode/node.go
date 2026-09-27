@@ -86,22 +86,19 @@ func Open(cfg Config) (*Node, error) {
 	rc := raft.DefaultConfig()
 	rc.LocalID = raft.ServerID(cfg.ID)
 	rc.Logger = logger
-	rc.HeartbeatTimeout = cfg.Heartbeat
-	rc.LeaderLeaseTimeout = cfg.Heartbeat
-	election := cfg.ElectionTimeout
-	if election == 0 {
-		election = 5 * cfg.Heartbeat
-		if election < 50*time.Millisecond {
-			election = 50 * time.Millisecond
-		}
+	election := deriveElectionTimeout(cfg)
+	// HashiCorp starts follower elections on HeartbeatTimeout (not ElectionTimeout).
+	// Non-preferred nodes with an explicit long ElectionTimeout therefore also get
+	// that value as HeartbeatTimeout so they do not steal warm-up leadership.
+	hb := cfg.Heartbeat
+	if !cfg.PreferLeader && cfg.ElectionTimeout > hb {
+		hb = cfg.ElectionTimeout
 	}
-	if cfg.PreferLeader {
-		// Win the warm-up election against peers with the default multiplier.
-		election = 2 * cfg.Heartbeat
-		if election < 20*time.Millisecond {
-			election = 20 * time.Millisecond
-		}
+	if election < hb {
+		election = hb
 	}
+	rc.HeartbeatTimeout = hb
+	rc.LeaderLeaseTimeout = cfg.Heartbeat // research IV; may be << deferred hb
 	rc.ElectionTimeout = election
 	rc.CommitTimeout = cfg.Heartbeat
 	if err := raft.ValidateConfig(rc); err != nil {
@@ -242,6 +239,39 @@ func leaderIDFromPeers(n *Node) string {
 		}
 	}
 	return ""
+}
+
+// deriveElectionTimeout keeps election ≫ RTT (≈ 2×NetworkDelay) while still
+// letting PreferLeader nodes campaign sooner than peers.
+func deriveElectionTimeout(cfg Config) time.Duration {
+	if cfg.ElectionTimeout > 0 {
+		return cfg.ElectionTimeout
+	}
+	rtt := 2 * cfg.NetworkDelay
+	base := 5 * cfg.Heartbeat
+	if v := 20 * rtt; v > base {
+		base = v
+	}
+	if base < 250*time.Millisecond {
+		base = 250 * time.Millisecond
+	}
+	if !cfg.PreferLeader {
+		return base
+	}
+	prefer := 2 * cfg.Heartbeat
+	if v := 8 * rtt; v > prefer {
+		prefer = v
+	}
+	if prefer < cfg.Heartbeat {
+		prefer = cfg.Heartbeat
+	}
+	if prefer >= base {
+		prefer = base / 2
+		if prefer < cfg.Heartbeat {
+			prefer = cfg.Heartbeat
+		}
+	}
+	return prefer
 }
 
 func jsonMarshal(v interface{}) ([]byte, error) {

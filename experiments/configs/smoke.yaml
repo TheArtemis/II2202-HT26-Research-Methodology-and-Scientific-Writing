@@ -40,6 +40,8 @@ qa:
   require_warmup_commits: true
   min_warmup_ok: 3
   continue_on_error: false
+  host_load_max_1m: 16.0
+  host_load_interval: 1s
 
 seeds:
   base: 1000

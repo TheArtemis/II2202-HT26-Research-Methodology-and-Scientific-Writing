@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/hashicorp/raft"
 )
 
 // APIServer is the client-facing HTTP surface for Apply and cluster stats.
@@ -28,6 +29,8 @@ func NewAPIServer(n *Node, addr string) (*APIServer, error) {
 	mux.HandleFunc("/apply", api.handleApply)
 	mux.HandleFunc("/stats", api.handleStats)
 	mux.HandleFunc("/health", api.handleHealth)
+	mux.HandleFunc("/transfer", api.handleTransfer)
+	mux.HandleFunc("/timeouts", api.handleTimeouts)
 	api.server = &http.Server{Handler: mux}
 	go func() { _ = api.server.Serve(ln) }()
 	return api, nil
@@ -124,6 +127,75 @@ func (a *APIServer) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"status": "ok",
 		"id":     a.node.Config.ID,
 		"state":  a.node.Raft.State().String(),
+	})
+}
+
+func (a *APIServer) handleTransfer(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"ok": false, "error": "id required"})
+		return
+	}
+	ip, ok := a.node.Config.Peers[id]
+	if !ok {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"ok": false, "error": "unknown peer"})
+		return
+	}
+	if a.node.Raft.State() != raft.Leader {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]interface{}{
+			"ok":        false,
+			"error":     "not leader",
+			"leader_id": leaderIDFromPeers(a.node),
+		})
+		return
+	}
+	addr := raft.ServerAddress(fmt.Sprintf("%s:%d", ip, a.node.Config.RaftPort))
+	if err := a.node.Raft.LeadershipTransferToServer(raft.ServerID(id), addr).Error(); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]interface{}{"ok": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]interface{}{"ok": true, "id": id})
+}
+
+func (a *APIServer) handleTimeouts(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	hbStr := r.URL.Query().Get("heartbeat")
+	if hbStr == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"ok": false, "error": "heartbeat required"})
+		return
+	}
+	hb, err := time.ParseDuration(hbStr)
+	if err != nil || hb < 5*time.Millisecond {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"ok": false, "error": "invalid heartbeat"})
+		return
+	}
+	election := deriveElectionTimeout(Config{
+		Heartbeat:    hb,
+		NetworkDelay: a.node.Config.NetworkDelay,
+		PreferLeader: false,
+	})
+	if election < hb {
+		election = hb
+	}
+	rc := a.node.Raft.ReloadableConfig()
+	rc.HeartbeatTimeout = hb
+	rc.ElectionTimeout = election
+	if err := a.node.Raft.ReloadConfig(rc); err != nil {
+		writeJSON(w, http.StatusConflict, map[string]interface{}{"ok": false, "error": err.Error()})
+		return
+	}
+	a.node.Config.Heartbeat = hb
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"ok":        true,
+		"heartbeat": hb.String(),
+		"election":  election.String(),
 	})
 }
 
