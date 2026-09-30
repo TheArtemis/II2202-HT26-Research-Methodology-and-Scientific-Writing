@@ -37,4 +37,11 @@ sudo python3 netinfra/mininetd/server.py --socket /tmp/mininetd.sock &
 cd viz && npm install && npm run sync-data && npm run dev
 ```
 
+## AWS fleet (full campaign)
+
+Stage-4 `configs/full.yaml` is locked at **30 repetitions (900 trials)**. For the disposable
+5-EC2 campaign (S3 shards, local merge, 5-minute live viz), see
+[`infra/aws/README.md`](../infra/aws/README.md). During a run: `make watch` in `infra/aws` (or
+`npm run watch-s3` under `viz/`) plus `?live=1` in the viz.
+
 See `harness/README.md` and `raftnode/README.md` for details.

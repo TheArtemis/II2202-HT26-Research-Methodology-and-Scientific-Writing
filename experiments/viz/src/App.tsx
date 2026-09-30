@@ -18,8 +18,27 @@ const DIRECT = "#1d4ed8";
 const FWD = "#b45309";
 const FAIL_D = "#64748b";
 const FAIL_F = "#9a3412";
+const LIVE_POLL_MS = 5 * 60 * 1000;
 
 const emptyFilters: Filters = { topologies: [], delays: [], heartbeats: [] };
+
+function readLiveFromUrl(): boolean {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("live") === "1";
+}
+
+function setLiveInUrl(on: boolean) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  if (on) url.searchParams.set("live", "1");
+  else url.searchParams.delete("live");
+  window.history.replaceState({}, "", url.toString());
+}
+
+function formatRefreshTime(d: Date | null): string {
+  if (!d) return "never";
+  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
 
 export default function App() {
   const [rows, setRows] = useState<RunRow[]>([]);
@@ -27,35 +46,85 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [tab, setTab] = useState<"rq1" | "rq2" | "runs">("rq1");
+  const [live, setLive] = useState(readLiveFromUrl);
+  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [liveStatus, setLiveStatus] = useState<"idle" | "ok" | "error">("idle");
 
-  const loadText = useCallback((text: string, label: string) => {
+  const loadText = useCallback((text: string, label: string, resetFilters = true) => {
     const parsed = parseDatasetJSONL(text);
     if (parsed.length === 0) {
       setError("No rows parsed from JSONL.");
-      return;
+      return false;
     }
     setRows(parsed);
     setSource(label);
     setError(null);
-    setFilters({
-      topologies: uniqueSorted(parsed.map((r) => r.topology)),
-      delays: uniqueSorted(parsed.map((r) => r.delay)),
-      heartbeats: uniqueSorted(parsed.map((r) => r.heartbeat)),
-    });
+    if (resetFilters) {
+      setFilters({
+        topologies: uniqueSorted(parsed.map((r) => r.topology)),
+        delays: uniqueSorted(parsed.map((r) => r.delay)),
+        heartbeats: uniqueSorted(parsed.map((r) => r.heartbeat)),
+      });
+    }
+    return true;
   }, []);
 
+  const fetchDataset = useCallback(
+    async (label: string, bustCache: boolean, resetFilters: boolean) => {
+      const url = bustCache
+        ? `/data/dataset.jsonl?t=${Date.now()}`
+        : "/data/dataset.jsonl";
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) throw new Error(`${r.status}`);
+      const text = await r.text();
+      const ok = loadText(text, label, resetFilters);
+      if (ok) {
+        setLastRefresh(new Date());
+        setLiveStatus("ok");
+      }
+      return ok;
+    },
+    [loadText],
+  );
+
   useEffect(() => {
-    fetch("/data/dataset.jsonl")
-      .then((r) => (r.ok ? r.text() : Promise.reject(new Error(`${r.status}`))))
-      .then((t) => loadText(t, "public/data/dataset.jsonl"))
-      .catch(() => {
-        /* wait for upload */
+    fetchDataset("public/data/dataset.jsonl", false, true).catch(() => {
+      /* wait for upload */
+    });
+  }, [fetchDataset]);
+
+  useEffect(() => {
+    setLiveInUrl(live);
+    if (!live) return;
+
+    let cancelled = false;
+    const tick = () => {
+      // Preserve filter selections across polls; initial page load already set them.
+      fetchDataset("public/data/dataset.jsonl (live)", true, false).catch(() => {
+        if (!cancelled) setLiveStatus("error");
       });
-  }, [loadText]);
+    };
+
+    tick();
+    const id = window.setInterval(tick, LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [live, fetchDataset]);
 
   const onFile = (file: File | null) => {
     if (!file) return;
-    file.text().then((t) => loadText(t, file.name));
+    file.text().then((t) => {
+      if (loadText(t, file.name)) {
+        setLastRefresh(new Date());
+        setLiveStatus("idle");
+      }
+    });
+  };
+
+  const toggleLive = () => {
+    setLive((prev) => !prev);
   };
 
   const allTopos = useMemo(() => uniqueSorted(rows.map((r) => r.topology)), [rows]);
@@ -110,10 +179,27 @@ export default function App() {
               onChange={(e) => onFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <button
+            type="button"
+            className={live ? "live-btn on" : "live-btn"}
+            onClick={toggleLive}
+            aria-pressed={live}
+            title="Re-fetch /data/dataset.jsonl every 5 minutes (also ?live=1)"
+          >
+            {live ? "Live on" : "Live"}
+          </button>
           <span className="source">
             {rows.length > 0 ? `${rows.length} runs · ${source}` : "No data loaded yet"}
           </span>
         </div>
+        {(live || lastRefresh) && (
+          <p className={`live-status status-${live ? liveStatus : "idle"}`}>
+            {live ? "Live · " : ""}
+            last refresh {formatRefreshTime(lastRefresh)}
+            {rows.length > 0 ? ` · ${rows.length} runs` : ""}
+            {live ? " · polling every 5 min" : ""}
+          </p>
+        )}
         {error && <p className="error">{error}</p>}
       </header>
 

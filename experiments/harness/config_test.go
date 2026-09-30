@@ -2,6 +2,7 @@ package harness
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -67,9 +68,56 @@ func TestExpandFullCount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 5×2×3×1×20 = 600
-	if len(trials) != 600 {
-		t.Fatalf("got %d, want 600", len(trials))
+	// 5×2×3×1×30 = 900
+	if len(trials) != 900 {
+		t.Fatalf("got %d, want 900", len(trials))
+	}
+}
+
+// Contiguous equal shards must each see every topology — otherwise worker identity
+// is confounded with topology when running --from/--limit across EC2 instances.
+func TestExpandShardBalancesTopologies(t *testing.T) {
+	path := filepath.Join("..", "configs", "full.yaml")
+	exp, err := LoadExperimentFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trials, err := Expand(exp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const workers = 5
+	chunk := (len(trials) + workers - 1) / workers
+	wantTopos := map[string]struct{}{}
+	for _, name := range exp.Matrix.Topologies {
+		wantTopos[strings.ToUpper(name)] = struct{}{}
+		wantTopos[name] = struct{}{}
+	}
+	for w := 0; w < workers; w++ {
+		from := w * chunk
+		to := from + chunk
+		if to > len(trials) {
+			to = len(trials)
+		}
+		seen := map[string]int{}
+		for _, tr := range trials[from:to] {
+			seen[tr.Topology]++
+		}
+		for _, name := range exp.Matrix.Topologies {
+			// Spec.Name is typically uppercase (T0…T4).
+			n := seen[name] + seen[strings.ToUpper(name)]
+			if n == 0 {
+				t.Fatalf("worker %d shard [%d,%d) missing topology %s (seen=%v)", w, from, to, name, seen)
+			}
+		}
+	}
+	// First trial of the campaign should be rep 1 (outermost loop).
+	if trials[0].Repetition != 1 {
+		t.Fatalf("first trial rep=%d, want 1", trials[0].Repetition)
+	}
+	// With 30 conditions per rep, index 30 starts rep 2.
+	if trials[30].Repetition != 2 {
+		t.Fatalf("trial 30 rep=%d, want 2", trials[30].Repetition)
 	}
 }
 

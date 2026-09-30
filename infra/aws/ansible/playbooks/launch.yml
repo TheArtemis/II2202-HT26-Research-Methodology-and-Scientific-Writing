@@ -1,0 +1,89 @@
+---
+# Launch equal shards: worker i gets --from i*chunk --limit chunk.
+- name: Launch experiment worker shards
+  hosts: workers
+  become: true
+  gather_facts: false
+  serial: 0
+  vars:
+    experiments_dir: /opt/ii2202/experiments
+    results_dir: /opt/ii2202/experiments/results/full
+    # Relative to experiments_dir unless absolute.
+    config_path: "{{ config | default('configs/full.yaml') }}"
+    worker_env_file: /etc/experiment/worker.env
+  tasks:
+    - name: Require from_trial and limit_trials host vars
+      ansible.builtin.assert:
+        that:
+          - from_trial is defined
+          - limit_trials is defined
+          - campaign_id is defined
+          - results_bucket is defined
+        fail_msg: >-
+          Inventory must set from_trial, limit_trials, campaign_id, results_bucket
+          (written by Terraform into inventory.ini).
+
+    - name: Ensure mininetd is running
+      ansible.builtin.systemd:
+        name: mininetd
+        state: started
+        enabled: true
+
+    - name: Wait for mininetd socket
+      ansible.builtin.wait_for:
+        path: /tmp/mininetd.sock
+        state: present
+        timeout: 60
+
+    - name: Ensure results directory exists
+      ansible.builtin.file:
+        path: "{{ results_dir }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Write worker environment file
+      ansible.builtin.copy:
+        dest: "{{ worker_env_file }}"
+        owner: root
+        group: root
+        mode: "0640"
+        content: |
+          WORKER_ID={{ inventory_hostname }}
+          FROM_TRIAL={{ from_trial }}
+          LIMIT_TRIALS={{ limit_trials }}
+          CONFIG={{ config_path }}
+          EXPERIMENTS_DIR={{ experiments_dir }}
+          RESULTS_DIR={{ results_dir }}
+          CAMPAIGN_ID={{ campaign_id }}
+          RESULTS_BUCKET={{ results_bucket }}
+          S3_PREFIX={{ s3_prefix | default('campaigns/' ~ campaign_id ~ '/') }}
+          AWS_DEFAULT_REGION={{ aws_region | default('eu-north-1') }}
+          MININETD_ADDR=/tmp/mininetd.sock
+
+    - name: Reset any previous complete marker
+      ansible.builtin.file:
+        path: "{{ results_dir }}/complete.json"
+        state: absent
+
+    - name: Enable and start experiment-worker
+      ansible.builtin.systemd:
+        name: experiment-worker
+        enabled: true
+        state: restarted
+        daemon_reload: true
+
+    - name: Ensure results-sync timer is active
+      ansible.builtin.systemd:
+        name: results-sync.timer
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Report shard assignment
+      ansible.builtin.debug:
+        msg: >-
+          {{ inventory_hostname }}: harness run {{ config_path }}
+          --from {{ from_trial }} --limit {{ limit_trials }}
+          → s3://{{ results_bucket }}/{{ s3_prefix }}workers/{{ inventory_hostname }}/

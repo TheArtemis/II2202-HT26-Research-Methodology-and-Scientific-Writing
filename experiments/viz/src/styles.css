@@ -101,6 +101,37 @@ code,
   font-size: 0.85rem;
 }
 
+.live-btn {
+  border: 1px solid var(--line);
+  background: var(--bg-elev);
+  color: var(--ink);
+  padding: 0.45rem 0.9rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.live-btn.on {
+  border-color: var(--pos);
+  background: var(--pos);
+  color: #fafaf9;
+}
+
+.live-status {
+  margin: 0.65rem 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.live-status.status-ok {
+  color: var(--pos);
+}
+
+.live-status.status-error {
+  color: var(--neg);
+}
+
 .error {
   color: var(--neg);
   margin: 0.75rem 0 0;

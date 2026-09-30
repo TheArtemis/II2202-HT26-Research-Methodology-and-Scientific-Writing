@@ -18,6 +18,24 @@ npm run dev                             # http://localhost:5173
 
 Or use **Open dataset.jsonl** in the UI to load any batch without restarting.
 
+### Live refresh (AWS campaign)
+
+During a fleet run, the laptop bridges private S3 → local `dataset.jsonl` every 5 minutes; the
+browser never talks to AWS:
+
+```bash
+# Terminal A
+npm run sync-data && npm run dev
+# open http://localhost:5173/?live=1  (or click Live in the UI)
+
+# Terminal B — shells out to infra/aws `make watch` when present
+CAMPAIGN_ID=full-YYYYMMDD npm run watch-s3
+```
+
+Live mode re-fetches `/data/dataset.jsonl` every **5 minutes** with a cache-bust query param and
+shows last refresh time + run count. Full lifecycle and S3 layout:
+[`infra/aws/README.md`](../../infra/aws/README.md).
+
 ## Views
 
 | Tab | Content |

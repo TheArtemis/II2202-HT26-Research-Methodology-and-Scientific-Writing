@@ -1,0 +1,40 @@
+# Terraform
+**/.terraform/
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfstate.backup
+**/crash.log
+**/crash.*.log
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/.generated/
+
+# Generated inventories / fleet metadata (written by terraform apply)
+**/ansible/inventory.ini
+**/ansible/fleet.json
+**/ansible/inventory/hosts.yml
+**/inventory.ini
+**/inventory.yml
+**/inventory.yaml
+**/fleet.json
+
+# Local campaign cache (S3 sync / merge on laptop)
+/results/
+**/scripts/.cache/
+
+# Secrets / operator-local values
+**/*.tfvars
+!**/*.tfvars.example
+**/*.auto.tfvars
+!**/*.auto.tfvars.example
+**/*secret*
+**/*credentials*
+
+# Local backend config with account-specific bucket names
+**/backend.hcl
+!**/backend.hcl.example
+
+# Operator campaign vars from last infra-apply (finish/destroy)
+.campaign.env

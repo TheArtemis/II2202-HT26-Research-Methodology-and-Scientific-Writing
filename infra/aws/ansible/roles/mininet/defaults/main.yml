@@ -1,0 +1,7 @@
+---
+mininet_version: "2.3.0"
+mininet_commit: "d7f399d7a1200b602bd6a95ae88bae1009664d4a"
+mininet_repo: "https://github.com/mininet/mininet.git"
+mininet_src: /opt/mininet
+# -n deps, -f OpenFlow ref, -v Open vSwitch (no GUI / no Wireshark)
+mininet_install_flags: "-nfv"

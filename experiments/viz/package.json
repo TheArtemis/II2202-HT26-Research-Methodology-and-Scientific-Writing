@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "sync-data": "node scripts/sync-data.mjs"
+    "sync-data": "node scripts/sync-data.mjs",
+    "watch-s3": "node scripts/watch-s3.mjs"
   },
   "dependencies": {
     "react": "^19.0.0",

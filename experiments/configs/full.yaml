@@ -1,7 +1,9 @@
-# Full — Stage 4 main data collection (20 repetitions).
+# Full — Stage 4 main data collection (30 repetitions → 900 trials).
+# Matrix: 5 topologies × 2 modes × 3 delays × 30 reps = 900 runs.
 # Freeze workload/timing after pilot before using this file.
+# AWS fleet: shard equally across 5 workers (180 trials each); see infra/aws/README.md.
 name: full
-description: Main experimental matrix (600 runs with heartbeat fixed at 10ms).
+description: Main experimental matrix (900 runs with heartbeat fixed at 10ms).
 output_dir: results/full
 
 binaries:
@@ -16,13 +18,13 @@ matrix:
   modes: [direct, forwarding]
   delays: [0.5ms, 5ms, 20ms]
   heartbeats: [10ms]
-  repetitions: 20
+  repetitions: 30
 
 timing:
   cluster_ready_timeout: 30s
   settle: 1s
   warmup: 3s
-  observe: 20s
+  observe: 30s
   teardown_pause: 1s
 
 workload:

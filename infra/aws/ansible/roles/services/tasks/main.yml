@@ -1,0 +1,98 @@
+---
+- name: Ensure /etc/experiment directory
+  ansible.builtin.file:
+    path: /etc/experiment
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install results-sync script
+  ansible.builtin.template:
+    src: results-sync.sh.j2
+    dest: /usr/local/bin/results-sync.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install experiment-worker wrapper
+  ansible.builtin.template:
+    src: experiment-worker.sh.j2
+    dest: /usr/local/bin/experiment-worker.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install default worker.env (overwritten on launch)
+  ansible.builtin.template:
+    src: worker.env.j2
+    dest: "{{ worker_env_file }}"
+    owner: root
+    group: root
+    mode: "0640"
+    force: false
+  vars:
+    worker_id: "{{ inventory_hostname }}"
+    from_trial: "{{ from_trial | default(0) }}"
+    limit_trials: "{{ limit_trials | default(180) }}"
+    config_rel: configs/full.yaml
+
+- name: Install mininetd.service
+  ansible.builtin.template:
+    src: mininetd.service.j2
+    dest: /etc/systemd/system/mininetd.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Install experiment-worker.service
+  ansible.builtin.template:
+    src: experiment-worker.service.j2
+    dest: /etc/systemd/system/experiment-worker.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Install results-sync.service
+  ansible.builtin.template:
+    src: results-sync.service.j2
+    dest: /etc/systemd/system/results-sync.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Install results-sync.timer
+  ansible.builtin.template:
+    src: results-sync.timer.j2
+    dest: /etc/systemd/system/results-sync.timer
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Reload systemd
+
+- name: Flush handlers before enabling units
+  ansible.builtin.meta: flush_handlers
+
+- name: Enable and start mininetd
+  ansible.builtin.systemd:
+    name: mininetd
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Enable results-sync timer (worker unit started on launch)
+  ansible.builtin.systemd:
+    name: results-sync.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Leave experiment-worker stopped until launch
+  ansible.builtin.systemd:
+    name: experiment-worker
+    enabled: false
+    state: stopped
+    daemon_reload: true

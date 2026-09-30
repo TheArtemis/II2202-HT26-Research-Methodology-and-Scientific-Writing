@@ -1,0 +1,24 @@
+---
+# Full worker configure: packages → Mininet → Go → AWS CLI → build → systemd.
+- name: Configure experiment workers
+  hosts: workers
+  become: true
+  gather_facts: true
+  vars:
+    experiment_user: experiment
+    experiment_home: /home/experiment
+    experiment_root: /opt/ii2202
+    experiments_dir: /opt/ii2202/experiments
+    results_dir: /opt/ii2202/experiments/results/full
+    mininet_version: "2.3.0"
+    mininet_commit: "d7f399d7a1200b602bd6a95ae88bae1009664d4a"
+    go_version: "1.22.12"
+    repo_url: "{{ lookup('env', 'REPO_URL') | default('https://github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing.git', true) }}"
+    git_sha: "{{ lookup('env', 'GIT_SHA') | default('', true) }}"
+  roles:
+    - common
+    - awscli
+    - golang
+    - mininet
+    - experiment
+    - services

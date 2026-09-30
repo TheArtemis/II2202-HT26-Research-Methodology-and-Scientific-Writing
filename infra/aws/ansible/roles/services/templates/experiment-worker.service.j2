@@ -1,0 +1,21 @@
+[Unit]
+Description=II2202 experiment harness worker (shard)
+After=mininetd.service network-online.target
+Requires=mininetd.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+WorkingDirectory={{ experiments_dir }}
+EnvironmentFile=-{{ worker_env_file }}
+Environment=PATH=/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin
+Environment=MININETD_ADDR={{ mininetd_socket }}
+ExecStart=/usr/local/bin/experiment-worker.sh
+RemainAfterExit=no
+TimeoutStartSec=infinity
+Nice=0
+
+[Install]
+WantedBy=multi-user.target

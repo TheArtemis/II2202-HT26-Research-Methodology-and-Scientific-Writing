@@ -1,0 +1,37 @@
+---
+- name: Check whether Mininet is already installed
+  ansible.builtin.command: mn --version
+  register: mn_version
+  changed_when: false
+  failed_when: false
+
+- name: Clone Mininet repository
+  ansible.builtin.git:
+    repo: "{{ mininet_repo }}"
+    dest: "{{ mininet_src }}"
+    version: "{{ mininet_commit }}"
+    force: true
+  when: mn_version.rc != 0 or (mininet_version not in (mn_version.stdout | default('')))
+
+- name: Install Mininet {{ mininet_version }} (pinned commit)
+  ansible.builtin.command:
+    cmd: util/install.sh {{ mininet_install_flags }}
+    chdir: "{{ mininet_src }}"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: mn_version.rc != 0 or (mininet_version not in (mn_version.stdout | default('')))
+  register: mininet_install
+  async: 3600
+  poll: 15
+
+- name: Verify Mininet version
+  ansible.builtin.command: mn --version
+  register: mn_verify
+  changed_when: false
+  failed_when: mininet_version not in mn_verify.stdout
+
+- name: Ensure Open vSwitch is running
+  ansible.builtin.systemd:
+    name: openvswitch-switch
+    state: started
+    enabled: true

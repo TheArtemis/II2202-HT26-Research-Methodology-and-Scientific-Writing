@@ -1,0 +1,110 @@
+---
+- name: Require GIT_SHA
+  ansible.builtin.assert:
+    that:
+      - git_sha is defined
+      - git_sha | length >= 7
+    fail_msg: "Pass -e git_sha=<commit> (or GIT_SHA env / make configure GIT_SHA=…)."
+
+- name: Ensure results parent directory
+  ansible.builtin.file:
+    path: "{{ experiments_dir }}/results"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Clone or update repository
+  ansible.builtin.git:
+    repo: "{{ repo_url }}"
+    dest: "{{ experiment_root }}"
+    version: "{{ git_sha }}"
+    force: true
+    update: true
+  become_user: "{{ experiment_user }}"
+  register: repo_checkout
+
+- name: Build experiment binaries
+  ansible.builtin.shell: |
+    set -euo pipefail
+    export PATH=/usr/local/go/bin:/usr/local/bin:$PATH
+    mkdir -p bin
+    go build -o bin/raftd ./cmd/raftd
+    go build -o bin/raftclient ./cmd/raftclient
+    go build -o bin/harness ./cmd/harness
+    go build -o bin/netctl ./cmd/netctl
+  args:
+    chdir: "{{ experiments_dir }}"
+    executable: /bin/bash
+  become_user: "{{ experiment_user }}"
+
+- name: Make binaries world-executable (Mininet hosts share FS)
+  ansible.builtin.file:
+    path: "{{ experiments_dir }}/bin/{{ item }}"
+    mode: "0755"
+  loop: "{{ build_binaries }}"
+
+- name: Collect binary checksums
+  ansible.builtin.stat:
+    path: "{{ experiments_dir }}/bin/{{ item }}"
+    checksum_algorithm: sha256
+  loop: "{{ build_binaries }}"
+  register: bin_stats
+
+- name: Build checksum map
+  ansible.builtin.set_fact:
+    binary_checksums: >-
+      {{
+        binary_checksums | default({})
+        | combine({ item.item: item.stat.checksum })
+      }}
+  loop: "{{ bin_stats.results }}"
+  when: item.stat.exists | default(false)
+
+- name: Fetch EC2 instance identity (best-effort)
+  ansible.builtin.uri:
+    url: http://169.254.169.254/latest/meta-data/instance-id
+    return_content: true
+    timeout: 2
+  register: instance_id_meta
+  failed_when: false
+  changed_when: false
+
+- name: Ensure results_dir exists for machine.json
+  ansible.builtin.file:
+    path: "{{ results_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Capture go version string
+  ansible.builtin.command: go version
+  register: go_version_str
+  changed_when: false
+
+- name: Write machine.json
+  ansible.builtin.copy:
+    dest: "{{ machine_json_path }}"
+    mode: "0644"
+    content: |
+      {{ {
+        'worker_id': inventory_hostname,
+        'hostname': ansible_hostname,
+        'instance_id': (instance_id_meta.content | default('')) if (instance_id_meta is defined and instance_id_meta.status is defined and instance_id_meta.status == 200) else '',
+        'git_sha': git_sha,
+        'repo_url': repo_url,
+        'go_version': go_version_str.stdout | default(''),
+        'mininet_commit': mininet_commit | default('d7f399d7a1200b602bd6a95ae88bae1009664d4a'),
+        'from_trial': from_trial | default(none),
+        'limit_trials': limit_trials | default(none),
+        'campaign_id': campaign_id | default(''),
+        'checksums': binary_checksums | default({}),
+        'built_at': ansible_date_time.iso8601
+      } | to_nice_json }}
+
+- name: Dry-run full config expansion (sanity)
+  ansible.builtin.command:
+    cmd: ./bin/harness dry-run configs/full.yaml
+    chdir: "{{ experiments_dir }}"
+  changed_when: false

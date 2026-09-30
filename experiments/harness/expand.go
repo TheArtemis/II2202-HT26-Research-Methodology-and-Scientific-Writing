@@ -12,25 +12,38 @@ import (
 
 // Trial is one fully-resolved experimental condition + repetition.
 type Trial struct {
-	Index      int               `json:"index" yaml:"index"`
-	RunID      string            `json:"run_id" yaml:"run_id"`
-	Topology   string            `json:"topology" yaml:"topology"`
-	Mode       netinfra.Mode     `json:"mode" yaml:"mode"`
-	Delay      time.Duration     `json:"delay" yaml:"delay"`
-	Heartbeat  time.Duration     `json:"heartbeat" yaml:"heartbeat"`
-	Repetition int               `json:"repetition" yaml:"repetition"`
-	Seed       int64             `json:"seed" yaml:"seed"`
+	Index      int                   `json:"index" yaml:"index"`
+	RunID      string                `json:"run_id" yaml:"run_id"`
+	Topology   string                `json:"topology" yaml:"topology"`
+	Mode       netinfra.Mode         `json:"mode" yaml:"mode"`
+	Delay      time.Duration         `json:"delay" yaml:"delay"`
+	Heartbeat  time.Duration         `json:"heartbeat" yaml:"heartbeat"`
+	Repetition int                   `json:"repetition" yaml:"repetition"`
+	Seed       int64                 `json:"seed" yaml:"seed"`
 	Spec       netinfra.TopologySpec `json:"-" yaml:"-"`
-	Peers      map[string]string `json:"peers" yaml:"peers"`
-	Leader     string            `json:"leader" yaml:"leader"`
-	ClientNode string            `json:"client_node" yaml:"client_node"`
-	Dir        string            `json:"dir" yaml:"dir"`
+	Peers      map[string]string     `json:"peers" yaml:"peers"`
+	Leader     string                `json:"leader" yaml:"leader"`
+	ClientNode string                `json:"client_node" yaml:"client_node"`
+	Dir        string                `json:"dir" yaml:"dir"`
+}
+
+type topoReady struct {
+	spec       netinfra.TopologySpec
+	peers      map[string]string
+	leader     string
+	clientNode string
 }
 
 // Expand builds the Cartesian product of matrix factors.
+//
+// Repetition is the outermost loop so contiguous --from/--limit shards (e.g. 180
+// trials across 5 workers for a 900-trial full campaign) each cover all
+// topology×mode×delay conditions. That avoids confounding worker identity with
+// topology when sharding across EC2 instances.
+//
+// Seed = seeds.base + global trial index remains stable for a frozen config.
 func Expand(exp Experiment) ([]Trial, error) {
-	var trials []Trial
-	idx := 0
+	tops := make([]topoReady, 0, len(exp.Matrix.Topologies))
 	for _, topoName := range exp.Matrix.Topologies {
 		spec, err := netinfra.LoadNamedSpec(topoName)
 		if err != nil {
@@ -55,41 +68,51 @@ func Expand(exp Experiment) ([]Trial, error) {
 		if _, ok := peers[clientNode]; !ok {
 			return nil, fmt.Errorf("client_node %q not in topology %s", clientNode, spec.Name)
 		}
+		tops = append(tops, topoReady{
+			spec:       spec,
+			peers:      peers,
+			leader:     leader,
+			clientNode: clientNode,
+		})
+	}
 
-		for _, modeStr := range exp.Matrix.Modes {
-			modeNorm, err := parseMode(modeStr)
-			if err != nil {
-				return nil, err
-			}
-			mode, err := netinfra.ParseMode(modeNorm)
-			if err != nil {
-				return nil, err
-			}
-			for _, delayStr := range exp.Matrix.Delays {
-				delay, err := time.ParseDuration(delayStr)
+	var trials []Trial
+	idx := 0
+	for rep := 1; rep <= exp.Matrix.Repetitions; rep++ {
+		for _, t := range tops {
+			for _, modeStr := range exp.Matrix.Modes {
+				modeNorm, err := parseMode(modeStr)
 				if err != nil {
 					return nil, err
 				}
-				for _, hbStr := range exp.Matrix.Heartbeats {
-					hb, err := time.ParseDuration(hbStr)
+				mode, err := netinfra.ParseMode(modeNorm)
+				if err != nil {
+					return nil, err
+				}
+				for _, delayStr := range exp.Matrix.Delays {
+					delay, err := time.ParseDuration(delayStr)
 					if err != nil {
 						return nil, err
 					}
-					for rep := 1; rep <= exp.Matrix.Repetitions; rep++ {
-						runID := formatRunID(spec.Name, modeNorm, delay, hb, rep)
+					for _, hbStr := range exp.Matrix.Heartbeats {
+						hb, err := time.ParseDuration(hbStr)
+						if err != nil {
+							return nil, err
+						}
+						runID := formatRunID(t.spec.Name, modeNorm, delay, hb, rep)
 						trials = append(trials, Trial{
 							Index:      idx,
 							RunID:      runID,
-							Topology:   spec.Name,
+							Topology:   t.spec.Name,
 							Mode:       mode,
 							Delay:      delay,
 							Heartbeat:  hb,
 							Repetition: rep,
 							Seed:       exp.Seeds.Base + int64(idx),
-							Spec:       spec,
-							Peers:      peers,
-							Leader:     leader,
-							ClientNode: clientNode,
+							Spec:       t.spec,
+							Peers:      t.peers,
+							Leader:     t.leader,
+							ClientNode: t.clientNode,
 							Dir:        filepath.Join(exp.OutputDir, runID),
 						})
 						idx++

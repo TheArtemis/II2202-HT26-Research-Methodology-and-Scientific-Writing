@@ -16,13 +16,17 @@ Orchestrates the research-plan trial loop against Mininet + HashiCorp Raft:
 |------|---------|--------|
 | `configs/smoke.yaml` | End-to-end sanity (T4 × 2 modes) | 2 |
 | `configs/pilot.yaml` | Stage 3 pilot (5 reps) | **150** |
-| `configs/full.yaml` | Stage 4 main (20 reps) | **600** |
+| `configs/full.yaml` | Stage 4 main (30 reps) | **900** |
 | `configs/heartbeat-sweep.yaml` | Optional heartbeat IV | 60 |
 
 Edit YAML to change rate, observe window, topologies, etc. Heartbeat defaults to
-`10ms` so the main matrix matches the plan’s 600-run target
-(`5 × 2 × 3 × 20`). Cross `[5ms, 10ms, 500ms]` via `heartbeat-sweep.yaml`
+`10ms` so the main matrix matches the plan’s 900-run target
+(`5 × 2 × 3 × 30`). Cross `[5ms, 10ms, 500ms]` via `heartbeat-sweep.yaml`
 (HashiCorp clamps values below 5ms).
+
+Trial expansion nests **repetition outermost** so contiguous `--from`/`--limit`
+shards each cover every topology×mode×delay (needed for equal EC2 sharding;
+see `infra/aws/README.md`).
 
 ## Build
 
