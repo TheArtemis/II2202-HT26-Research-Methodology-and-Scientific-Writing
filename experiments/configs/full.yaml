@@ -14,9 +14,9 @@ mininetd:
 matrix:
   topologies: [t0, t1, t2, t3, t4]
   modes: [direct, forwarding]
-  delays: [0.5ms, 1ms, 5ms, 20ms, 100ms]
-  heartbeats: [2ms, 20ms, 50ms, 100ms]
-  repetitions: 50
+  delays: [0.5ms, 5ms, 20ms]
+  heartbeats: [10ms]
+  repetitions: 20
 
 timing:
   cluster_ready_timeout: 30s
