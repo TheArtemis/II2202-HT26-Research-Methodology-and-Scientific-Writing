@@ -1,0 +1,6 @@
+,rmse_earth_radii,rmse_earth_radii,mae_earth_radii,mae_earth_radii,r_squared,r_squared,log_rmse_dex,log_rmse_dex
+,mean,std,mean,std,mean,std,mean,std
+model,,,,,,,,
+Log-linear regression,4.17984,0.3015,2.79145,0.20794,0.47849,0.06105,0.22078,0.01804
+Median baseline,5.91345,0.18334,5.29712,0.1632,-0.04154,0.02941,0.4212,0.02533
+Random forest,2.40078,0.34514,1.58103,0.18166,0.82601,0.04327,0.17759,0.01956

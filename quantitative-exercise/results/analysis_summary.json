@@ -1,0 +1,92 @@
+{
+  "seed": 2202,
+  "python": "3.12.3",
+  "numpy": "1.26.4",
+  "pandas": "2.1.4",
+  "scikit_learn": "1.4.1.post1",
+  "data_quality_and_selection": {
+    "archive_rows_with_radius": 6316,
+    "transit_rows": 4707,
+    "transit_rows_with_measured_mass": 1693,
+    "complete_model_rows": 1670,
+    "unique_host_stars_in_model_sample": 1304,
+    "duplicate_planet_names_in_archive": 0,
+    "model_rows_excluded_for_missing_values": 23,
+    "model_rows_excluded_for_nonpositive_values": 0,
+    "missing_by_required_column_before_complete_case_selection": {
+      "pl_rade": 0,
+      "pl_bmasse": 0,
+      "pl_orbper": 0,
+      "pl_eqt": 4,
+      "st_mass": 0,
+      "st_met": 22
+    },
+    "mass_provenance_counts_among_transit_planets": {
+      "M-R relationship": 2974,
+      "Mass": 1693,
+      "Msini": 38,
+      "Msin(i)/sin(i)": 2
+    }
+  },
+  "radius_mean_earth_radii": 7.891409328562874,
+  "radius_sd_earth_radii": 5.8065124714036385,
+  "radius_median_earth_radii": 6.84540595,
+  "radius_skewness": 0.3806560487656899,
+  "model_comparison": {
+    "pooled_out_of_fold_metrics": {
+      "Median baseline": {
+        "rmse_earth_radii": 5.916003736082844,
+        "mae_earth_radii": 5.297120022838324,
+        "r_squared": -0.03869080563964378,
+        "log_rmse_dex": 0.4218813402382899
+      },
+      "Log-linear regression": {
+        "rmse_earth_radii": 4.189618381084067,
+        "mae_earth_radii": 2.7914507375809237,
+        "r_squared": 0.4790712332954088,
+        "log_rmse_dex": 0.22144765992182155
+      },
+      "Random forest": {
+        "rmse_earth_radii": 2.42300575435914,
+        "mae_earth_radii": 1.581025672062687,
+        "r_squared": 0.825763836736931,
+        "log_rmse_dex": 0.17856141373934636
+      }
+    },
+    "pooled_forest_vs_linear_rmse_reduction_earth_radii": 1.766612626724927,
+    "host_cluster_bootstrap_rmse_reduction_95_percent_ci_earth_radii": [
+      1.502645510656662,
+      2.030433951184994
+    ],
+    "bootstrap_resamples": 5000
+  },
+  "permutation_importance": [
+    {
+      "feature": "Planet mass",
+      "mean_log_rmse_increase_dex": 0.3226242772030652,
+      "sd_log_rmse_increase_dex": 0.034249159721653655
+    },
+    {
+      "feature": "Equilibrium temperature",
+      "mean_log_rmse_increase_dex": 0.04454240388816341,
+      "sd_log_rmse_increase_dex": 0.015089378869378908
+    },
+    {
+      "feature": "Orbital period",
+      "mean_log_rmse_increase_dex": 0.03211665490966972,
+      "sd_log_rmse_increase_dex": 0.00992511867201743
+    },
+    {
+      "feature": "Stellar mass",
+      "mean_log_rmse_increase_dex": 0.009001896151277776,
+      "sd_log_rmse_increase_dex": 0.004557018975042991
+    },
+    {
+      "feature": "Stellar metallicity",
+      "mean_log_rmse_increase_dex": 0.00556221437225159,
+      "sd_log_rmse_increase_dex": 0.005722041512266073
+    }
+  ],
+  "maximum_learning_curve_training_rows_mean": 1336.0,
+  "maximum_learning_curve_training_hosts_mean": 1043.2
+}

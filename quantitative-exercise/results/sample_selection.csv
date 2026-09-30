@@ -1,0 +1,5 @@
+selection_step,rows_remaining,criterion
+Confirmed planets with reported radius,6316,TAP query condition: pl_rade is not null
+Transit discoveries,4707,Consistent radius-detection context
+Transit discoveries with measured mass,1693,pl_bmassprov = Mass; excludes radius-derived M-R relationship values
+"Complete, physically valid model sample",1670,Complete required predictors and positive log-transformed quantities
