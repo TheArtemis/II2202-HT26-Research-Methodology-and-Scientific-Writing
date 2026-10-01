@@ -1,4 +1,4 @@
-# Fleet Terraform — disposable 5-node EC2 workers
+# Fleet Terraform — disposable 8-node EC2 workers
 #
 # Prerequisites: bootstrap applied (`make bootstrap` writes backend.hcl here).
 #

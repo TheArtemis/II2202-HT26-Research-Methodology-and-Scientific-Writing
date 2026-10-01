@@ -3,5 +3,7 @@ mininet_version: "2.3.0"
 mininet_commit: "d7f399d7a1200b602bd6a95ae88bae1009664d4a"
 mininet_repo: "https://github.com/mininet/mininet.git"
 mininet_src: /opt/mininet
-# -n deps, -f OpenFlow ref, -v Open vSwitch (no GUI / no Wireshark)
-mininet_install_flags: "-nfv"
+# -n core/deps, -v Open vSwitch. Skip -f (OpenFlow reference controller):
+# install.sh clones git://github.com/... which times out from many AWS networks,
+# and we do not need the OF reference controller for this harness.
+mininet_install_flags: "-nv"

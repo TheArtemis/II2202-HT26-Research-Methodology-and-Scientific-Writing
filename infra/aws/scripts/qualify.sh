@@ -8,6 +8,7 @@ source "${SCRIPT_DIR}/lib.sh"
 require_cmd ansible-playbook
 INV="$(resolve_inventory)"
 
+require_ansible
 cd "${ANSIBLE_DIR}"
 ansible-playbook \
   -i "${INV}" \

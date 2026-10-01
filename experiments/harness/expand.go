@@ -36,8 +36,8 @@ type topoReady struct {
 
 // Expand builds the Cartesian product of matrix factors.
 //
-// Repetition is the outermost loop so contiguous --from/--limit shards (e.g. 180
-// trials across 5 workers for a 900-trial full campaign) each cover all
+// Repetition is the outermost loop so contiguous --from/--limit shards (e.g. 113
+// trials across 8 workers for a 900-trial full campaign) each cover all
 // topology×mode×delay conditions. That avoids confounding worker identity with
 // topology when sharding across EC2 instances.
 //

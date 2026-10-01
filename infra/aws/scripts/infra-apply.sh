@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create disposable 5-node fleet + write inventory.ini / fleet.json.
+# Create disposable 8-node fleet + write inventory.ini / fleet.json.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
@@ -26,7 +26,6 @@ fi
 [[ -n "${SSH_PUBLIC_KEY}" ]] || die "set SSH_PUBLIC_KEY or place ~/.ssh/id_ed25519.pub"
 
 WORKER_COUNT="${WORKERS:-$DEFAULT_WORKERS}"
-MAX_RUNTIME_HOURS="${MAX_RUNTIME_HOURS:-4}"
 
 cd "${TF_FLEET}"
 if [[ ! -f backend.hcl ]]; then
@@ -40,7 +39,6 @@ terraform apply -auto-approve \
   -var="ssh_cidr=${SSH_CIDR}" \
   -var="ssh_public_key=${SSH_PUBLIC_KEY}" \
   -var="worker_count=${WORKER_COUNT}" \
-  -var="max_runtime_hours=${MAX_RUNTIME_HOURS}" \
   ${RESULTS_BUCKET:+-var="results_bucket_name=${RESULTS_BUCKET}"}
 
 # Ensure outputs land where scripts expect (Terraform local_file defaults).

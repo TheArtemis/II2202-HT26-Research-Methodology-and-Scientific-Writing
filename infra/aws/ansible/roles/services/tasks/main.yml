@@ -32,9 +32,8 @@
     mode: "0640"
     force: false
   vars:
+    # Do not write from_trial: "{{ from_trial | default(...) }}" — self-reference loops.
     worker_id: "{{ inventory_hostname }}"
-    from_trial: "{{ from_trial | default(0) }}"
-    limit_trials: "{{ limit_trials | default(180) }}"
     config_rel: configs/full.yaml
 
 - name: Install mininetd.service

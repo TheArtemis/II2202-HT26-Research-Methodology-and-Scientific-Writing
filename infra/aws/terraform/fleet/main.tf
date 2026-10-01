@@ -10,14 +10,6 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.4"
     }
-    time = {
-      source  = "hashicorp/time"
-      version = "~> 0.11"
-    }
-    archive = {
-      source  = "hashicorp/archive"
-      version = "~> 2.4"
-    }
   }
 
   # Configure after bootstrap:

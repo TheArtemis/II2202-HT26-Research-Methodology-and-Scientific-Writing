@@ -26,13 +26,9 @@ resource "aws_instance" "worker" {
     Name        = local.worker_names[count.index]
     Worker      = local.worker_names[count.index]
     WorkerIndex = tostring(count.index)
-    ExpiresAt   = local.kill_at
   }
 
   lifecycle {
-    ignore_changes = [
-      tags["ExpiresAt"],
-      ami,
-    ]
+    ignore_changes = [ami]
   }
 }

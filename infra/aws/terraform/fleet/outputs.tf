@@ -28,16 +28,6 @@ output "instance_profile_name" {
   value       = aws_iam_instance_profile.worker.name
 }
 
-output "expires_at" {
-  description = "UTC time when EventBridge will terminate the fleet."
-  value       = local.kill_at
-}
-
-output "kill_schedule_name" {
-  description = "EventBridge Scheduler name for the auto-terminate kill switch."
-  value       = aws_scheduler_schedule.kill_fleet.name
-}
-
 output "inventory_path" {
   description = "Path to generated Ansible inventory."
   value       = abspath(local_file.inventory.filename)

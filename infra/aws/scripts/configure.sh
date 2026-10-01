@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "${SCRIPT_DIR}/lib.sh"
 
-require_cmd ansible-playbook
+require_ansible
 
 : "${GIT_SHA:?set GIT_SHA=<commit> (push a clean commit first)}"
 REPO_URL="${REPO_URL:-https://github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing.git}"

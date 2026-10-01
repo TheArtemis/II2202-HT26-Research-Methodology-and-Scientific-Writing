@@ -18,13 +18,9 @@ locals {
     region             = var.aws_region
     results_bucket     = local.results_bucket
     s3_prefix          = "campaigns/${var.campaign_id}/"
-    instance_type      = var.instance_type
-    worker_count       = var.worker_count
-    max_runtime_hours  = var.max_runtime_hours
-    started_at         = time_static.fleet_start.rfc3339
-    expires_at         = local.kill_at
-    kill_schedule_name = aws_scheduler_schedule.kill_fleet.name
-    workers            = local.workers
+    instance_type  = var.instance_type
+    worker_count   = var.worker_count
+    workers        = local.workers
   }
 
   inventory_ini = join("\n", concat(

@@ -23,7 +23,7 @@ variable "campaign_id" {
 variable "worker_count" {
   description = "Number of identical worker instances."
   type        = number
-  default     = 5
+  default     = 8
 
   validation {
     condition     = var.worker_count >= 1 && var.worker_count <= 20
@@ -34,7 +34,7 @@ variable "worker_count" {
 variable "instance_type" {
   description = "EC2 instance type for each worker."
   type        = string
-  default     = "c5a.xlarge"
+  default     = "c5a.large"
 }
 
 variable "root_volume_gb" {
@@ -63,17 +63,6 @@ variable "results_bucket_name" {
   description = "S3 bucket from bootstrap. Empty = ii2202-experiments-<account_id>."
   type        = string
   default     = ""
-}
-
-variable "max_runtime_hours" {
-  description = "Hard ceiling: EventBridge schedules auto-terminate after this many hours (starts at terraform apply)."
-  type        = number
-  default     = 4
-
-  validation {
-    condition     = var.max_runtime_hours >= 1 && var.max_runtime_hours <= 12
-    error_message = "max_runtime_hours must be between 1 and 12."
-  }
 }
 
 variable "inventory_path" {

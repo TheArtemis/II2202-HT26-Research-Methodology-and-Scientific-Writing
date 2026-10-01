@@ -6,11 +6,20 @@ AWS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="$(cd "${AWS_ROOT}/../.." && pwd)"
 export AWS_ROOT REPO_ROOT
 
+# Prefer pip --user ansible-core over apt ansible 2.10 (incompatible with Jinja2 3.x).
+export PATH="${HOME}/.local/bin:/usr/local/bin:${PATH}"
+
 TF_BOOTSTRAP="${AWS_ROOT}/terraform/bootstrap"
 TF_FLEET="${AWS_ROOT}/terraform/fleet"
 ANSIBLE_DIR="${AWS_ROOT}/ansible"
 SCRIPTS_DIR="${AWS_ROOT}/scripts"
 EXPERIMENTS_DIR="${REPO_ROOT}/experiments"
+
+# /mnt/<drive> (WSL DrvFS) is world-writable, so Ansible ignores ansible.cfg in-tree.
+# Force config + host-key policy via env so configure/qualify/launch work from /mnt/f.
+export ANSIBLE_CONFIG="${ANSIBLE_DIR}/ansible.cfg"
+export ANSIBLE_HOST_KEY_CHECKING=False
+export ANSIBLE_ROLES_PATH="${ANSIBLE_DIR}/roles"
 
 # Terraform writes these by default (see terraform/fleet/variables.tf).
 INVENTORY_INI="${ANSIBLE_DIR}/inventory.ini"
@@ -20,7 +29,7 @@ FLEET_JSON="${ANSIBLE_DIR}/fleet.json"
 CAMPAIGN_ENV="${AWS_ROOT}/.campaign.env"
 
 DEFAULT_REGION="${AWS_REGION:-eu-north-1}"
-DEFAULT_WORKERS="${WORKERS:-5}"
+DEFAULT_WORKERS="${WORKERS:-8}"
 DEFAULT_TOTAL_TRIALS="${TOTAL_TRIALS:-900}"
 DEFAULT_CONFIG="${CONFIG:-experiments/configs/full.yaml}"
 WATCH_INTERVAL_SEC="${WATCH_INTERVAL_SEC:-300}"
@@ -29,6 +38,27 @@ die() { echo "error: $*" >&2; exit 1; }
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "missing required command: $1"
+}
+
+# apt ansible 2.10 + pip Jinja2 3.x breaks filters (|bool, |default, …) mid-playbook.
+require_ansible() {
+  require_cmd ansible-playbook
+  local ver major minor
+  ver="$(ansible-playbook --version 2>/dev/null | head -1 || true)"
+  # "ansible-playbook [core 2.17.14]" or "ansible-playbook 2.10.8"
+  if [[ "${ver}" =~ core\ ([0-9]+)\.([0-9]+) ]]; then
+    major="${BASH_REMATCH[1]}"
+    minor="${BASH_REMATCH[2]}"
+  elif [[ "${ver}" =~ ([0-9]+)\.([0-9]+) ]]; then
+    major="${BASH_REMATCH[1]}"
+    minor="${BASH_REMATCH[2]}"
+  else
+    die "cannot parse ansible-playbook version from: ${ver}"
+  fi
+  if [[ "${major}" -lt 2 ]] || { [[ "${major}" -eq 2 ]] && [[ "${minor}" -lt 14 ]]; }; then
+    die "ansible-playbook too old (${ver}). Install: pip3 install --user 'ansible-core>=2.15,<2.18' and ensure ~/.local/bin is on PATH (ahead of /usr/bin)."
+  fi
+  echo "ansible: $(command -v ansible-playbook) (${ver})"
 }
 
 # Load CAMPAIGN_ID / SSH_CIDR / … from the last infra-apply.

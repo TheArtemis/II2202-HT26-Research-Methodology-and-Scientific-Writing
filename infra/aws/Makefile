@@ -16,7 +16,7 @@ SHELL := /bin/bash
 SCRIPTS := scripts
 BASH := bash
 export CAMPAIGN_ID SSH_CIDR SSH_PUBLIC_KEY GIT_SHA REPO_URL CONFIG RESULTS_BUCKET
-export AWS_REGION WORKERS TOTAL_TRIALS MAX_RUNTIME_HOURS WATCH_INTERVAL_SEC ANSIBLE_ARGS
+export AWS_REGION WORKERS TOTAL_TRIALS WATCH_INTERVAL_SEC ANSIBLE_ARGS
 
 .PHONY: help bootstrap infra-apply configure qualify launch status \
 	collect merge watch finish infra-destroy apply
@@ -25,7 +25,7 @@ help:
 	@echo "Targets: bootstrap infra-apply configure qualify launch status collect merge watch finish infra-destroy"
 	@echo "Required for apply: CAMPAIGN_ID=… SSH_CIDR=<ip>/32"
 	@echo "Required for configure: GIT_SHA=<commit>"
-	@echo "Defaults: CONFIG=experiments/configs/full.yaml TOTAL_TRIALS=900 WORKERS=5 WATCH_INTERVAL_SEC=300"
+	@echo "Defaults: CONFIG=experiments/configs/full.yaml TOTAL_TRIALS=900 WORKERS=8 WATCH_INTERVAL_SEC=300"
 
 bootstrap:
 	@$(BASH) $(SCRIPTS)/bootstrap.sh

@@ -6,13 +6,28 @@
       - git_sha | length >= 7
     fail_msg: "Pass -e git_sha=<commit> (or GIT_SHA env / make configure GIT_SHA=…)."
 
-- name: Ensure results parent directory
-  ansible.builtin.file:
-    path: "{{ experiments_dir }}/results"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
+- name: Check for existing git checkout
+  ansible.builtin.stat:
+    path: "{{ experiment_root }}/.git"
+  register: exp_git
+
+# Partial configures leave /opt/ii2202 non-empty without .git (e.g. results/),
+# which makes `git clone` fail. Wipe only when it is not already a repo.
+- name: Reset experiment_root if not a git checkout
+  when: not exp_git.stat.exists
+  block:
+    - name: Remove stale experiment_root
+      ansible.builtin.file:
+        path: "{{ experiment_root }}"
+        state: absent
+
+    - name: Recreate experiment_root
+      ansible.builtin.file:
+        path: "{{ experiment_root }}"
+        state: directory
+        owner: "{{ experiment_user }}"
+        group: "{{ experiment_user }}"
+        mode: "0755"
 
 - name: Clone or update repository
   ansible.builtin.git:
@@ -23,6 +38,17 @@
     update: true
   become_user: "{{ experiment_user }}"
   register: repo_checkout
+
+- name: Ensure results directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ experiments_dir }}/results"
+    - "{{ results_dir }}"
 
 - name: Build experiment binaries
   ansible.builtin.shell: |
@@ -69,14 +95,6 @@
   register: instance_id_meta
   failed_when: false
   changed_when: false
-
-- name: Ensure results_dir exists for machine.json
-  ansible.builtin.file:
-    path: "{{ results_dir }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0755"
 
 - name: Capture go version string
   ansible.builtin.command: go version

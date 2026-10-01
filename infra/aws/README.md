@@ -1,8 +1,8 @@
 # AWS EC2 experiment fleet
 
-Disposable **5-node** fleet in **eu-north-1** for the Stage-4 full campaign
+Disposable **8-node** fleet in **eu-north-1** for the Stage-4 full campaign
 ([`experiments/configs/full.yaml`](../../experiments/configs/full.yaml)): **30 repetitions → 900 trials**,
-sharded equally (**180 trials / worker**). Workers upload **raw** shards to S3; your laptop merges,
+sharded equally (**113 trials / worker**, `ceil(900/8)`). Workers upload **raw** shards to S3; your laptop merges,
 summarizes, and refreshes the local viz. Compute is disposable; S3 (results + tfstate) is persistent.
 
 Run all Make targets from this directory (`cd infra/aws`). Terraform writes Ansible inventory to
@@ -14,33 +14,29 @@ maintain a YAML inventory by hand).
 | Item | Value |
 |------|--------|
 | Region | `eu-north-1` |
-| Workers | 5 × on-demand `c5a.xlarge` (Ubuntu 22.04) |
+| Workers | 8 × on-demand `c5a.large` (2 vCPU each = **16 vCPU**, full account quota) (Ubuntu 22.04) |
 | Campaign | `full.yaml`, `repetitions: 30` → **900** trials (`5 × 2 × 3 × 30`) |
-| Sharding | harness `--from` / `--limit` (equal chunks of 180) |
+| Sharding | harness `--from` / `--limit` (equal chunks of 113) |
 | Merge | **local laptop only** (workers never merge) |
 | Live viz | laptop polls S3 every **5 min**; browser auto-refreshes with `?live=1` |
-| Hard ceiling | **4 hours** (EventBridge auto-terminate; clock starts at `infra-apply`) |
 | SSH | restrict with `SSH_CIDR=<you>/32` |
 
-## Timing math (why 4h)
+## Timing math
 
-Per-trial wall time with `observe: 30s` is roughly **45–55s**. Across 5 workers:
+Per-trial wall time with `observe: 30s` is roughly **45–55s**. Across 8 workers:
 
-- 180 × 50s ≈ **150 min** of pure trial time
+- 113 × 50s ≈ **94 min** of pure trial time per worker
 - Plus ~15–25 min for provision / Ansible / smoke qualify before `launch`
+- Expect ~2–3h wall clock for the full campaign; tear down with `make finish` / `make infra-destroy`
 
-The kill switch is armed at **terraform apply**, not at launch, so a 3h ceiling
-is too tight. Default `max_runtime_hours=4`. Cost stays small
-(~4h × 5 × `c5a.xlarge`).
+Equal shard math (N=900, W=8):
 
-Equal shard math (N=900, W=5):
-
-- `chunk = ceil(900 / 5) = 180`
-- worker `i` → `--from $((i * 180)) --limit 180`
-- Ranges: `[0,180)`, `[180,360)`, `[360,540)`, `[540,720)`, `[720,900)`
-- The harness expands with **repetition outermost**, so each 180-trial shard
-  covers **all** topology×mode×delay conditions (6 reps each). That avoids
-  confounding worker identity with topology.
+- `chunk = ceil(900 / 8) = 113`
+- worker `i` → `--from $((i * 113)) --limit 113`
+- Ranges: `[0,113)`, `[113,226)`, …, `[791,904)` (last worker stops at trial 900)
+- The harness expands with **repetition outermost**, so each shard covers a contiguous
+  mix of topology×mode×delay conditions. That avoids confounding worker identity with
+  topology as much as equal-sized shards allow.
 - Identical frozen YAML + `seeds.base` on every host so `seed = base + global_index`
   stays correct
 ## Operator lifecycle
@@ -50,14 +46,14 @@ Equal shard math (N=900, W=5):
 3. `make infra-apply CAMPAIGN_ID=full-YYYYMMDD SSH_CIDR=<you>/32`
    (writes `ansible/inventory.ini`, `ansible/fleet.json`, and `.campaign.env` for finish/destroy)
 4. `make configure GIT_SHA=…`
-5. `make qualify` (smoke on all 5)
+5. `make qualify` (smoke on all 8)
 6. `make launch CONFIG=experiments/configs/full.yaml`
 7. On the laptop (two terminals):
    - `cd experiments/viz && npm run sync-data && npm run dev`
    - `make watch CAMPAIGN_ID=…` (from `infra/aws`) **or** `cd experiments/viz && CAMPAIGN_ID=… npm run watch-s3`
    - Open [http://localhost:5173/?live=1](http://localhost:5173/?live=1) (or use the **Live** toggle)
 8. `make finish` → final local merge + upload `merged/` + **destroy EC2**
-9. If abandoned: EventBridge kills instances at 4h; still run `make infra-destroy` for leftover networking/disks
+9. If abandoned: run `make infra-destroy` to tear down EC2 + leftover networking/disks
 
 ### `SSH_CIDR`
 
@@ -69,14 +65,41 @@ make infra-apply CAMPAIGN_ID=full-20260930 SSH_CIDR=203.0.113.10/32
 
 Do not use `0.0.0.0/0`. Egress on workers is HTTPS/DNS for apt/git/S3.
 
+### WSL note (`/mnt/f/...`)
+
+Windows-mounted paths are world-writable, so Ansible **ignores** `ansible.cfg` unless
+`ANSIBLE_CONFIG` is set. The Make scripts export that for you via `scripts/lib.sh`.
+If you invoke `ansible-playbook` by hand from `/mnt/f`, either use `make configure`
+or export:
+
+```bash
+export ANSIBLE_CONFIG=$PWD/ansible/ansible.cfg
+export ANSIBLE_HOST_KEY_CHECKING=False
+```
+
+### Ansible version (required)
+
+Ubuntu apt ships Ansible **2.10**, which breaks against pip Jinja2 **3.x**
+(`cannot import name 'environmentfilter'`). Configure then stops before installing
+`mininetd` / harness. Use pip ansible-core instead:
+
+```bash
+pip3 install --user 'ansible-core>=2.15,<2.18'
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+ansible-playbook --version   # should show core 2.15+
+```
+
+`make configure` / `qualify` / `launch` put `~/.local/bin` first on `PATH` automatically.
+
 ## Make targets (operator laptop)
 
 | Target | Action |
 |--------|--------|
 | `bootstrap` | Persistent S3 bucket + tfstate lock (once); writes `fleet/backend.hcl` |
-| `infra-apply` | Create 5 EC2 + `ansible/inventory.ini` / `fleet.json` / `.campaign.env` |
+| `infra-apply` | Create 8 EC2 + `ansible/inventory.ini` / `fleet.json` / `.campaign.env` |
 | `configure` | Ansible + pin `GIT_SHA` |
-| `qualify` | Smoke on all 5 |
+| `qualify` | Smoke on all 8 |
 | `launch` | Equal shards, start workers |
 | `status` | Count finalized runs / `complete.json` in S3 |
 | `collect` | `aws s3 sync` workers → `results/campaigns/<id>/workers/` |
@@ -135,7 +158,7 @@ writes `merged/` on `finish` (and during `watch` if configured).
 ## Architecture (summary)
 
 ```text
-Operator laptop --terraform--> fleet (5× c5a.xlarge)
+Operator laptop --terraform--> fleet (8× c5a.large)
 Operator laptop --ansible----> configure / launch shards
 Workers --------s3 sync------> campaigns/<id>/workers/...
 Laptop ---------s3 sync------> local cache → merge → summarize → viz/public/data/

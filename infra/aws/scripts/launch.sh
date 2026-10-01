@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Launch equal shards: worker i → --from i*chunk --limit chunk (chunk=180 for 900/5).
+# Launch equal shards: worker i → --from i*chunk --limit chunk (chunk=ceil(900/8)=113).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh
 source "${SCRIPT_DIR}/lib.sh"
 
-require_cmd ansible-playbook
+require_ansible
 INV="$(resolve_inventory)"
 require_fleet_json
 
@@ -28,7 +28,7 @@ python3 - <<PY
 import re, sys
 chunk = int("${CHUNK}")
 text = open("${INV}", encoding="utf-8").read()
-# INI lines: worker-00 ... from_trial=0 limit_trials=180
+# INI lines: worker-00 ... from_trial=0 limit_trials=113
 pat = re.compile(r"^(worker-(\d+))\s+.*\bfrom_trial=(\d+)\b.*\blimit_trials=(\d+)\b", re.M)
 rows = pat.findall(text)
 if not rows:
