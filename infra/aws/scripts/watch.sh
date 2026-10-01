@@ -7,6 +7,7 @@ source "${SCRIPT_DIR}/lib.sh"
 
 require_cmd aws
 require_cmd python3
+ensure_aws_region
 
 INTERVAL="${WATCH_INTERVAL_SEC}"
 TOTAL_TRIALS="${TOTAL_TRIALS:-$DEFAULT_TOTAL_TRIALS}"
@@ -14,7 +15,7 @@ WORKERS="${WORKERS:-$DEFAULT_WORKERS}"
 VIZ_DATA="${EXPERIMENTS_DIR}/viz/public/data"
 ID="$(campaign_id)"
 
-echo "watch: campaign=${ID} interval=${INTERVAL}s (Ctrl-C to stop)"
+echo "watch: campaign=${ID} region=${AWS_REGION} interval=${INTERVAL}s (Ctrl-C to stop)"
 echo "  viz data → ${VIZ_DATA}/dataset.jsonl"
 
 sync_viz() {
@@ -33,7 +34,7 @@ sync_viz() {
 all_complete() {
   local uri complete_count
   uri="$(s3_campaign_uri)"
-  complete_count="$(aws s3 ls "${uri}/workers/" --recursive 2>/dev/null | grep -c 'complete\.json$' || true)"
+  complete_count="$(aws s3 ls "${uri}/workers/" --recursive --region "${AWS_REGION}" 2>/dev/null | grep -c 'complete\.json$' || true)"
   [[ "${complete_count}" -ge "${WORKERS}" ]]
 }
 

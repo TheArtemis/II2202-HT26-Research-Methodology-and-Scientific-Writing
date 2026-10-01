@@ -67,12 +67,17 @@
         path: "{{ results_dir }}/complete.json"
         state: absent
 
-    - name: Enable and start experiment-worker
+    # Type=oneshot + TimeoutStartSec=infinity: ansible systemd state=started
+    # would block until the whole shard finishes. Enable + no-block start instead.
+    - name: Enable experiment-worker unit
       ansible.builtin.systemd:
         name: experiment-worker
         enabled: true
-        state: restarted
         daemon_reload: true
+
+    - name: Start experiment-worker without waiting for oneshot completion
+      ansible.builtin.command:
+        cmd: systemctl restart --no-block experiment-worker
 
     - name: Ensure results-sync timer is active
       ansible.builtin.systemd:

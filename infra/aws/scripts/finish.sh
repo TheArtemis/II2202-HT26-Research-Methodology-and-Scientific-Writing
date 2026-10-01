@@ -6,20 +6,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib.sh"
 
 require_cmd aws
-load_campaign_env
+ensure_aws_region
 
 ID="$(campaign_id)"
 export CAMPAIGN_ID="${ID}"
 URI="$(s3_campaign_uri)"
 LOCAL="$(campaign_local_dir)"
 
-echo "finish: final collect + merge for ${ID}"
+echo "finish: final collect + merge for ${ID} (region=${AWS_REGION})"
 "${SCRIPTS_DIR}/collect.sh"
 "${SCRIPTS_DIR}/merge.sh"
 
 if [[ -d "${LOCAL}/merged" ]]; then
   echo "finish: uploading merged/ → ${URI}/merged/"
   aws s3 sync "${LOCAL}/merged/" "${URI}/merged/" \
+    --region "${AWS_REGION}" \
     --exclude "*.tmp"
 fi
 

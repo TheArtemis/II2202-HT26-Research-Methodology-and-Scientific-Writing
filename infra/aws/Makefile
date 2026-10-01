@@ -15,6 +15,9 @@ SHELL := /bin/bash
 
 SCRIPTS := scripts
 BASH := bash
+# Default region so `export AWS_REGION` never injects an empty value into recipes
+# (empty AWS_REGION → aws CLI builds https://s3..amazonaws.com).
+AWS_REGION ?= eu-north-1
 export CAMPAIGN_ID SSH_CIDR SSH_PUBLIC_KEY GIT_SHA REPO_URL CONFIG RESULTS_BUCKET
 export AWS_REGION WORKERS TOTAL_TRIALS WATCH_INTERVAL_SEC ANSIBLE_ARGS
 

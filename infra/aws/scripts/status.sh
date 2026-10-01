@@ -7,6 +7,7 @@ source "${SCRIPT_DIR}/lib.sh"
 
 require_cmd aws
 require_cmd python3
+ensure_aws_region
 
 URI="$(s3_campaign_uri)"
 TOTAL_TRIALS="${TOTAL_TRIALS:-$DEFAULT_TOTAL_TRIALS}"
@@ -15,9 +16,9 @@ TMP="$(mktemp)"
 trap 'rm -f "${TMP}"' EXIT
 
 echo "campaign: $(campaign_id)"
-echo "s3:       ${URI}/"
+echo "s3:       ${URI}/ (region=${AWS_REGION})"
 
-aws s3 ls "${URI}/workers/" --recursive 2>/dev/null >"${TMP}" || true
+aws s3 ls "${URI}/workers/" --recursive --region "${AWS_REGION}" 2>/dev/null >"${TMP}" || true
 
 python3 - <<PY
 from pathlib import Path

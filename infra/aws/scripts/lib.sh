@@ -138,6 +138,22 @@ results_bucket() {
   echo "ii2202-experiments-${acct}"
 }
 
+# Make's `export AWS_REGION` can pass an empty value into recipes, which overrides
+# ~/.aws/config and yields Invalid endpoint: https://s3..amazonaws.com.
+ensure_aws_region() {
+  load_campaign_env
+  if [[ -z "${AWS_REGION:-}" ]]; then
+    if [[ -f "${FLEET_JSON}" ]]; then
+      AWS_REGION="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(d.get("region") or d.get("aws_region") or "")' "${FLEET_JSON}")"
+    fi
+  fi
+  if [[ -z "${AWS_REGION:-}" ]]; then
+    AWS_REGION="${DEFAULT_REGION}"
+  fi
+  export AWS_REGION
+  export AWS_DEFAULT_REGION="${AWS_REGION}"
+}
+
 campaign_local_dir() {
   local id
   id="$(campaign_id)"
