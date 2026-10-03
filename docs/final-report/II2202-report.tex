@@ -1,0 +1,257 @@
+\documentclass[11pt,a4paper]{article}
+
+% Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
+% are chosen to make page density close to the corresponding Word template.
+\usepackage[margin=1in,headheight=15pt,headsep=24pt,footskip=28pt]{geometry}
+% Template specifies Source Sans Pro; fall back to a system sans when unavailable.
+\usepackage{fontspec}
+\setmainfont{Calibri}
+\setsansfont{Calibri}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{siunitx}
+\usepackage{placeins}
+\usepackage{float}
+\usepackage[hidelinks]{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+\renewcommand{\bibsection}{\unnumberedheading{\refname}}
+
+\definecolor{guidancetext}{HTML}{595959}
+\definecolor{guidancebg}{HTML}{F1F3F5}
+
+\setstretch{1}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{8pt}
+\raggedbottom
+
+\titleformat{\section}
+  {\fontsize{14}{16.5}\selectfont\bfseries}
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{6pt}{4pt}
+\titleformat{\subsection}
+  {\fontsize{13}{15.5}\selectfont\bfseries}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{6pt}{2pt}
+
+\newcommand{\unnumberedheading}[1]{%
+  \par\vspace{2pt}{\fontsize{14}{16.5}\selectfont\bfseries #1\par}\vspace{6pt}%
+}
+\newcommand{\reporttitle}[1]{%
+  {\fontsize{16}{19}\selectfont\bfseries #1\par}\vspace{12pt}%
+}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period 1}
+\fancyhead[C]{\fontsize{9}{11}\selectfont Final report}
+\fancyhead[R]{\fontsize{9}{11}\selectfont 2 October 2026}
+\fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
+
+\begin{document}
+\reporttitle{Transparent Multi-Hop Routing for Raft Under Partial Network Partitions}
+\unnumberedheading{Authors}
+Lorenzo Deflorian <ldef@kth.se>\par
+Juozas Skarbalius <juozas@kth.se>\par
+\vspace{2pt}
+
+\unnumberedheading{Abstract}
+Raft is a leader-based consensus protocol that commits client entries only when a majority of replicas can exchange messages. Under \emph{partial} network partitions, some direct links fail while residual multi-hop paths remain. Because Raft assumes direct point-to-point communication, a leader may lose its quorum even when the network graph is still connected. Transparent multi-hop routing has been proposed as a network-layer remedy, but prior work has not experimentally characterised its effect on Raft liveness and commit latency.
+
+We evaluate HashiCorp Raft in Mininet under five predefined topologies (healthy baseline, non-critical cut, quorum-loss, constrained election, and chained connectivity), comparing direct-only communication with preconfigured Linux multi-hop forwarding at per-link delays of \(0.5\) and \(5\,\mathrm{ms}\) (heartbeat \(10\,\mathrm{ms}\)). Across \(117\) validated trials on an AWS fleet, forwarding restores progress in the constrained-election topology where direct communication never recovers (recovery \(\approx 21\,\mathrm{s}\), then \(\approx 55\)--\(59\) commits/s), and roughly doubles observe-window throughput under quorum-loss at \(5\,\mathrm{ms}\) (\(95.3\) vs.\ \(40.1\) entries/s). When routed followers are needed for the deciding majority, median commit latency rises by about \(24\)--\(124\%\); when a direct quorum remains, the latency overhead is small (\(\leq 10\%\)). A \(20\,\mathrm{ms}\) delay with a \(10\,\mathrm{ms}\) heartbeat largely prevents stable warm-up, exposing a delay--timeout interaction. The results support transparent forwarding as an effective, protocol-preserving resilience mechanism for selected partial partitions, at a measurable latency cost when forwarded paths decide commits.
+
+\newpage
+
+\section{Introduction}
+
+\subsection{Background and Rationale}
+
+Distributed databases, file systems, and cluster membership services rely on consensus to agree on a shared state. Raft is a leader-based protocol: the leader appends client entries and replicates them to followers, and an entry is committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}. Progress requires that a leader communicate with a majority; safety is retained under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
+
+Complete partitions are well understood: a minority cut cannot commit, while a majority side can. \emph{Partial} partitions are different---individual links fail while nodes remain reachable through intermediates~\cite[Sec.~2]{alfatafta2020nifty}. Raft's communication model assumes direct peer exchanges and does not forward messages multi-hop~\cite[Secs.~5.1--5.3]{ongaro2014raft}. A leader that loses two direct follower links may therefore stall even though those followers remain reachable at the network layer. This mismatch motivates asking whether transparent multi-hop routing can restore Raft progress, and at what latency cost.
+
+\subsection{Theory and Related Work}
+
+Jensen et al.\ studied etcd's Raft under partial failures and observed election instability and delayed requests; they suggested overlay routing as a possible fix but did not evaluate it~\cite[Secs.~4--5]{jensen2021raft}. Alfatafta et al.\ introduced Nifty, a transparent layer that detours traffic around failed paths; it masks partial partitions with low failure-free overhead in several systems, but not Raft~\cite[Secs.~6--7]{alfatafta2020nifty}. Omni-Paxos instead changes consensus itself to handle partial connectivity, and notes that overlay routing may add hops and delay~\cite[Secs.~2,8]{ng2023omnipaxos}. Together, these works show that partial connectivity harms Raft-like protocols and that transparent routing can help other systems, but they leave open an experimental characterisation of when multi-hop routing restores Raft progress and how path delay affects commit latency.
+
+\subsection{Research Problem, Aim, and Research Questions}
+
+\textbf{Research problem.}
+The liveness benefit and commit-latency cost of transparent multi-hop routing for Raft under controlled partial partitions have not been experimentally characterised.
+
+\textbf{Aim.}
+Experimentally characterise transparent multi-hop routing as a network-layer resilience mechanism for Raft under a defined set of partial-connectivity topologies, in terms of liveness and commit latency, without modifying the consensus implementation.
+
+\textbf{Research questions.}
+\begin{enumerate}
+  \item \textbf{RQ1 (Liveness):} Across topologies T1--T4, in which cases does transparent multi-hop routing restore stable Raft progress compared with direct communication only?
+  \item \textbf{RQ2 (Latency):} How does added per-link delay on multi-hop paths affect client-observed commit latency when a follower reached through such a path belongs to the deciding majority?
+\end{enumerate}
+
+\textbf{Hypotheses.}
+H1: Forwarding restores progress where the routed graph gives a viable leader bidirectional paths to a majority. H2: Commit latency increases with the extra round-trip of a forwarded path when that path is needed for the deciding majority, with little increase when a direct quorum remains.
+
+\section{Research Method}
+
+\subsection{Research Design and Methodological Rationale}
+
+We answer both questions with a controlled quantitative experiment. For each topology and delay, direct point-to-point and multi-hop forwarding use the same HashiCorp Raft build, failed-link set, workload, and timing. The treatment is path availability (and the resulting path delay), not a change to Raft.
+
+We did not use Nifty: its failure detection and route discovery would confound the effect of multi-hop communication with route installation time. Instead we preconfigure Linux routes and IP forwarding so that Raft peer addresses stay fixed while traffic traverses surviving bridges. Relative to the research plan, we moved from a single personal VM to an AWS worker fleet for throughput, fixed the heartbeat at \(10\,\mathrm{ms}\) (rather than sweeping it), and report a partial full-matrix campaign (\(\approx 5\)--\(6\) repetitions per completed condition instead of the planned \(30\)).
+
+\subsection{Experimental Platform, Conditions, and Evidence}
+
+\textbf{Software.}
+Replicas run HashiCorp Raft v1.7.3~\cite{hashicorp_raft} via a thin Go server (\texttt{raftd}). An open-loop client submits \(100\) requests/s with \(64\,\mathrm{B}\) payloads. Networks are emulated with Mininet 2.3.0~\cite{lantz2010mininet,mininet230}: each host runs one replica; \texttt{TCLink} applies delay; failed links are removed at inject time. In direct mode, intermediate hosts do not forward Raft traffic. In forwarding mode, static routes and IP forwarding carry the same peer addresses over multi-hop paths.
+
+\textbf{Platform.}
+Campaign \texttt{full-20261001A} ran on eight AWS \texttt{c5a.large} workers (2\,vCPU, Ubuntu 22.04, region \texttt{eu-north-1}), Go 1.22.12, Mininet commit \texttt{d7f399d}. Host load on validated runs stayed well below the overload threshold (mean peak load1 \(\approx 1.25\); none overloaded).
+
+\textbf{Topologies.}
+Figure~\ref{fig:topologies} shows the five scenarios. T0 is a five-node full mesh (healthy baseline). T1 removes only C--E while leader C keeps a direct majority. T2 is a quorum-loss star through A: leader C reaches A directly but not a majority. T3 isolates C with seeded logs that make A the only quorum-connected but outdated candidate. T4 is the three-node chain B--A--C with B as initial leader (majority size \(2\)).
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{figures/topology-scenarios.png}
+  \caption{Direct-only vs.\ transparent forwarding. Solid links remain; dashed links fail; blue paths are forwarding over surviving links.}
+  \label{fig:topologies}
+\end{figure}
+
+\textbf{Factors and response variables.}
+Independent variables: mode \(\in\{\mathrm{direct},\mathrm{forwarding}\}\), topology \(\in\{\mathrm{T0},\ldots,\mathrm{T4}\}\), per-link delay \(\in\{0.5,5,20\}\,\mathrm{ms}\), heartbeat fixed at \(10\,\mathrm{ms}\). Dependent variables: observe-window commit throughput, recovery time (inject \(\rightarrow\) first successful post-failure commit), election/term counts, and client commit latency (median and 95th percentile over successful observes).
+
+\subsection{Work Procedure and Data Collection}
+
+Each trial: (1)~start a clean Mininet topology and apply delay; (2)~boot replicas with the planned leader/log seed; (3)~warm up \(10\,\mathrm{s}\) and require \(\geq 1\) successful commit; (4)~inject the topology's failed links; (5)~observe \(30\,\mathrm{s}\); (6)~archive client logs, Raft events, timeline, host load, and tear down. Seeds are derived from base \(20260926\). The planned matrix was \(5\times 2\times 3\times 30=900\) trials; this report analyses the \(117\) trials that completed warm-up and validation. All \(20\,\mathrm{ms}\) runs for T0/T1/T2/T4 failed warm-up (cluster never stable with heartbeat \(10\,\mathrm{ms}\)); T3 at \(20\,\mathrm{ms}\) completed but made no progress.
+
+\subsection{Data Analysis and Quality Assurance}
+
+For RQ1 we compare direct vs.\ forwarding within each topology on throughput, recovery, elections, and client fail rate; T0/T1 are controls. We treat the boolean \texttt{stable\_progress} flag as secondary because it can mark near-zero progress as ``stable''; primary claims use throughput and recovery. For RQ2 we summarise per-run median latency and contrast conditions where forwarding is required for the deciding majority (notably T2) with controls that retain a direct quorum (T0/T1). With \(5\)--\(6\) repetitions we report means and standard deviations rather than formal hypothesis tests. Connectivity validation after inject, host-load monitoring, and exclusion of warm-up failures limit contamination. All scripts, topology YAML, and \texttt{dataset.jsonl} are archived with the campaign.
+
+\subsection{Use of AI Tools}
+
+AI tools assisted with experiment harness scripts, figure generation, grammar/style editing of the report, and structuring tables from the measurement dataset. All scientific claims, design choices, and interpretations were reviewed and verified by the authors against the raw campaign outputs.
+
+\section{Results}
+
+Unless noted, results refer to delays of \(0.5\,\mathrm{ms}\) and \(5\,\mathrm{ms}\) with heartbeat \(10\,\mathrm{ms}\) (\(n=5\) or \(6\) per cell). Figure~\ref{fig:rq1-thr} summarises observe-window throughput; Figure~\ref{fig:rq2-lat} summarises median commit latency.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/rq1-throughput.pdf}
+  \caption{Mean observe-window commit throughput (\(\pm\)\,SD) by topology and mode.}
+  \label{fig:rq1-thr}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{figures/rq2-latency.pdf}
+  \caption{Mean of per-run median commit latencies (\(\pm\)\,SD). Missing bars: no successful commits.}
+  \label{fig:rq2-lat}
+\end{figure}
+
+\subsection{RQ1: Liveness and recovery}
+
+\textbf{Controls (T0, T1).}
+Both modes remain live: throughput \(\approx 98\)--\(100\) entries/s, recovery of a few milliseconds after inject, and low client fail rates (\(\leq 1.6\%\)). Forwarding does not change the qualitative outcome when the leader already has a direct majority.
+
+\textbf{T2 (quorum-loss).}
+At \(0.5\,\mathrm{ms}\), direct mean throughput falls to \(68.4\) entries/s while forwarding recovers \(97.4\). At \(5\,\mathrm{ms}\) the gap widens: forwarding sustains \(95.3\) entries/s (fail rate \(4.7\%\)), whereas direct averages \(40.1\) with high variance---two of five runs essentially stall (\(\approx 0.11\) entries/s, \(>3900\) client failures) while three run near \(67\) entries/s. Forwarding therefore preserves near-full progress when the leader's direct quorum is removed; direct communication is degraded and sometimes nearly dead.
+
+\textbf{T3 (constrained election).}
+Direct communication never recovers at any delay: throughput \(0\), fail rate \(100\%\). Forwarding at \(0.5\,\mathrm{ms}\) recovers in all five runs after \(20.5\pm 0.1\,\mathrm{s}\), then commits at \(\approx 59\) entries/s for the remainder of the \(30\,\mathrm{s}\) window (elections \(\approx 8\)). At \(5\,\mathrm{ms}\), four of five runs meet the stability heuristic (recovery \(\approx 21.5\,\mathrm{s}\), throughput \(\approx 56\) entries/s) but with far more election churn (\(\approx 199\)). At \(20\,\mathrm{ms}\), forwarding also fails and produces election storms (\(\approx 750\) elections). Figure~\ref{fig:t3-rec} shows the recovery times for successful forwarding cases.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.48\textwidth]{figures/rq1-t3-recovery.pdf}
+  \caption{T3 forwarding recovery time (inject to first post-failure commit).}
+  \label{fig:t3-rec}
+\end{figure}
+
+\textbf{T4 (chain).}
+Both modes remain live at \(\approx 98\)--\(100\) entries/s. With three nodes, majority size is two: leader B can commit with A alone, so the missing B--C link is not critical for progress under our workload. Forwarding therefore does not ``rescue'' liveness relative to direct in this partial dataset; the interesting effect is latency (below).
+
+\textbf{Warm-up failures at \(20\,\mathrm{ms}\).}
+All T0/T1/T2/T4 runs at \(20\,\mathrm{ms}\) failed the warm-up commit check. With heartbeat \(10\,\mathrm{ms}\) and one-way delay \(20\,\mathrm{ms}\), the cluster does not become initially stable under our Raft timing, so those cells are excluded from latency and throughput comparisons.
+
+\subsection{RQ2: Commit latency}
+
+Table~\ref{tab:latency} reports mean per-run median latency. Absolute latency tracks the configured delay (\(\approx 2\)--\(3\,\mathrm{ms}\) at \(0.5\,\mathrm{ms}\) link delay; \(\approx 17\)--\(21\,\mathrm{ms}\) at \(5\,\mathrm{ms}\)).
+
+\begin{table}[H]
+  \centering
+  \caption{Mean of per-run median commit latencies (ms). ``--'' = no successful commits.}
+  \label{tab:latency}
+  \footnotesize
+  \begin{tabular}{llrrrr}
+    \toprule
+    Topology & Delay & Direct & Forwarding & Ratio & Interpretation \\
+    \midrule
+    T0 & \(0.5\,\mathrm{ms}\) & 2.64 & 2.65 & 1.01 & Direct quorum \\
+    T0 & \(5\,\mathrm{ms}\) & 17.33 & 18.98 & 1.10 & Direct quorum \\
+    T1 & \(0.5\,\mathrm{ms}\) & 2.48 & 2.66 & 1.07 & Direct quorum \\
+    T1 & \(5\,\mathrm{ms}\) & 18.97 & 18.67 & 0.98 & Direct quorum \\
+    T2 & \(0.5\,\mathrm{ms}\) & 1.64 & 3.68 & 2.24 & Forwarded majority \\
+    T2 & \(5\,\mathrm{ms}\) & 18.85 & 20.67 & 1.10 & Mixed direct outcomes \\
+    T3 & \(0.5\,\mathrm{ms}\) & -- & 3.46 & -- & Fwd only live \\
+    T3 & \(5\,\mathrm{ms}\) & -- & 14.65 & -- & Fwd only live \\
+    T4 & \(0.5\,\mathrm{ms}\) & 1.75 & 2.38 & 1.35 & Extra hop available \\
+    T4 & \(5\,\mathrm{ms}\) & 16.59 & 20.59 & 1.24 & Extra hop available \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+When a direct quorum remains (T0/T1), forwarding adds little latency (\(\leq 10\%\)). When forwarded followers are needed (T2 at \(0.5\,\mathrm{ms}\)), median latency more than doubles. T4 shows a moderate increase (\(+24\)--\(35\%\)) even though progress does not require the far endpoint, consistent with occasional use of longer paths or scheduling effects under forwarding. After T3 recovers, forwarding-only latency is comparable to other live cells at the same delay.
+
+\section{Discussion}
+
+\subsection{Interpretation and Answers to the Research Questions}
+
+\textbf{RQ1.} Transparent multi-hop routing restores progress in T3, where direct communication never recovers, and substantially improves progress in T2, especially at \(5\,\mathrm{ms}\). It is unnecessary for T0/T1 (already live) and does not change the liveness outcome for T4 under our three-node majority rule. H1 is therefore supported for the quorum-loss and constrained-election topologies, with the important caveat that recovery in T3 consumes most of the \(30\,\mathrm{s}\) observation window.
+
+\textbf{RQ2.} H2 is supported: latency overhead is small when a direct quorum remains, and large when a forwarded path participates in the deciding majority (T2 at low delay). Absolute latency is dominated by the configured per-link delay. The \(20\,\mathrm{ms}\) warm-up failures show that heartbeat and election timeouts must be co-designed with path delay; otherwise forwarding cannot even be evaluated.
+
+Relative to prior work, the results empirically confirm Jensen et al.'s overlay suggestion for Raft~\cite{jensen2021raft} and align with Nifty's claim that transparent detours can mask partial partitions~\cite{alfatafta2020nifty}, while quantifying the Raft-specific latency and recovery costs that Omni-Paxos anticipated qualitatively~\cite{ng2023omnipaxos}. Unlike Omni-Paxos, we leave the consensus protocol unchanged.
+
+\subsection{Validity, Limitations, and Generalizability}
+
+Internal validity is strengthened by paired topologies, fixed binaries, seeds, and host-load checks, but threatened by incomplete repetitions (\(5\)--\(6\) instead of \(30\)), bimodal T2-direct behaviour at \(5\,\mathrm{ms}\), and exclusion of most \(20\,\mathrm{ms}\) cells. External validity is limited to Mininet emulation, HashiCorp Raft timing, the five topologies, and AWS \texttt{c5a.large} workers; production WANs, larger clusters, and adaptive overlays (e.g., Nifty) may differ. Measurement uses client-side timestamps for latency to avoid mixing clocks with Raft event logs.
+
+\subsection{Ethics, Societal Aspects, and Sustainability}
+
+The study uses open-source software and synthetic workloads; no personal data or human participants are involved. Societal relevance lies in availability of consensus-backed services under partial failures common in multi-homed and cloud networks. Computational cost was bounded by an eight-instance short campaign; incomplete runs still consumed cloud energy, motivating tighter warm-up/timeout co-design before large matrices. Transparent forwarding can improve resilience without forking consensus codebases, which may ease adoption, but operators must weigh added latency and the risk of election storms when delays approach heartbeat periods.
+
+\subsection{Implications and Future Work}
+
+Practically, static multi-hop forwarding is a viable mitigation for selected partial partitions if recovery delay is acceptable. Future work should (i)~finish the \(30\)-repetition matrix with heartbeat scaled to delay, (ii)~measure route-discovery overlays such as Nifty against preconfigured forwarding, (iii)~stress T4-like chains when the far node \emph{is} required for quorum (e.g., five-node chains), and (iv)~characterise recovery-time distributions under varied election timeouts.
+
+\section{Conclusion}
+
+We experimentally compared direct Raft communication with transparent multi-hop forwarding under controlled partial partitions. Forwarding restores liveness in the constrained-election topology and preserves near-full throughput under quorum-loss, at the cost of higher commit latency when routed followers decide the majority and of long recovery before T3 progresses. Controls with a direct quorum show negligible latency overhead. The findings support network-layer multi-hop routing as a protocol-preserving resilience mechanism for Raft, provided timeouts accommodate path delay.
+
+\newpage
+\bibliographystyle{myIEEEtran}
+\bibliography{II2202-report}
+
+\newpage
+\unnumberedheading{Appendix A: Campaign completeness}
+
+Planned matrix: \(5\) topologies \(\times\) \(2\) modes \(\times\) \(3\) delays \(\times\) \(30\) repetitions \(= 900\) trials.
+Campaign \texttt{full-20261001A} yielded \(117\) validated successful trials, \(43\) failed
+(almost all \(20\,\mathrm{ms}\) warm-up failures on T0/T1/T2/T4), and \(740\) not executed.
+Analysis dataset: \texttt{experiments/viz/public/data/dataset.jsonl}.
+Artefacts per successful run include \texttt{client.jsonl}, \texttt{events-*.jsonl},
+\texttt{timeline.json}, \texttt{metrics.json}, and \texttt{hostload.jsonl}.
+
+\unnumberedheading{Appendix B: AI tool use (summary)}
+
+AI assistance was used for harness/script authoring, aggregating \texttt{dataset.jsonl} into tables/figures, and editorial revision of LaTeX drafts. Prompts concerned formatting, statistical summaries, and wording; no AI-generated measurement values were accepted without recomputation from campaign files. Authors remain responsible for all scientific content.
+\end{document}
