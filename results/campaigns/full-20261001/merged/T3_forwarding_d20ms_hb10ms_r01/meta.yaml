@@ -6,7 +6,7 @@ heartbeat: 10ms
 repetition: 1
 seed: 20260949
 leader: C
-client_node: B
+client_node: A
 peers:
     A: 10.0.0.1
     B: 10.0.0.2
