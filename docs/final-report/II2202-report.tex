@@ -3,10 +3,15 @@
 % Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
 % are chosen to make page density close to the corresponding Word template.
 \usepackage[margin=1in,headheight=15pt,headsep=24pt,footskip=28pt]{geometry}
-% Template specifies Source Sans Pro; fall back to a system sans when unavailable.
+% Template specifies Source Sans Pro; use Source Sans 3 when available, else Arial.
 \usepackage{fontspec}
-\setmainfont{Calibri}
-\setsansfont{Calibri}
+\IfFontExistsTF{Source Sans 3}{%
+  \setmainfont{Source Sans 3}%
+  \setsansfont{Source Sans 3}%
+}{%
+  \setmainfont{Arial}%
+  \setsansfont{Arial}%
+}
 \usepackage{setspace}
 \usepackage{xcolor}
 \usepackage{mdframed}
@@ -74,30 +79,64 @@ We evaluate HashiCorp Raft in Mininet under five predefined topologies (healthy 
 
 \subsection{Background and Rationale}
 
-Distributed databases, file systems, and cluster membership services rely on consensus to agree on a shared state. Raft is a leader-based protocol: the leader appends client entries and replicates them to followers, and an entry is committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}. Progress requires that a leader communicate with a majority; safety is retained under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
+Distributed databases, file systems, and cluster orchestration services rely on consensus to agree on a shared state.
+Raft is a leader-based protocol: the leader appends client entries and replicates them to followers, and an entry is committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}. 
+Progress requires that a leader communicates with a majority of followers. Safety is ensured under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
 
-Complete partitions are well understood: a minority cut cannot commit, while a majority side can. \emph{Partial} partitions are different---individual links fail while nodes remain reachable through intermediates~\cite[Sec.~2]{alfatafta2020nifty}. Raft's communication model assumes direct peer exchanges and does not forward messages multi-hop~\cite[Secs.~5.1--5.3]{ongaro2014raft}. A leader that loses two direct follower links may therefore stall even though those followers remain reachable at the network layer. This mismatch motivates asking whether transparent multi-hop routing can restore Raft progress, and at what latency cost.
+Complete network partitions are well understood---as long as there exists a majority of nodes that can communicate with each other, the entries can be committed.
+\emph{Partial} partitions are different---individual links fail while nodes remain virtually reachable through intermediate nodes~\cite[Sec.~2]{alfatafta2020nifty}. 
+Raft assumes direct point-to-point communication and does not forward messages through intermediates~\cite[Secs.~5.1--5.3]{ongaro2014raft}. 
+A leader that loses two direct follower links may therefore stall even though those followers remain reachable at the network layer. 
+If consensus protocol (e.g., Raft) fails to handle such partial partition topologies, it can lead to a situation where the leader is unable to commit entries, even though the network layer allows for communication between the majority of nodes.
+Most notable example in this situation was observed in Cloudflare outage in 2020 [cite cloudflare blog].
+
+This creates a mismatch between what consensus protocol considers reachable and what the network layer considers reachable during partial partitions.
+This mismatch motivates asking whether transparent multi-hop routing during such partial partitions can restore Raft's progress, and at what latency cost.
 
 \subsection{Theory and Related Work}
 
-Jensen et al.\ studied etcd's Raft under partial failures and observed election instability and delayed requests; they suggested overlay routing as a possible fix but did not evaluate it~\cite[Secs.~4--5]{jensen2021raft}. Alfatafta et al.\ introduced Nifty, a transparent layer that detours traffic around failed paths; it masks partial partitions with low failure-free overhead in several systems, but not Raft~\cite[Secs.~6--7]{alfatafta2020nifty}. Omni-Paxos instead changes consensus itself to handle partial connectivity, and notes that overlay routing may add hops and delay~\cite[Secs.~2,8]{ng2023omnipaxos}. Together, these works show that partial connectivity harms Raft-like protocols and that transparent routing can help other systems, but they leave open an experimental characterisation of when multi-hop routing restores Raft progress and how path delay affects commit latency.
+Jensen et al.\ studied etcd's Raft under partial failures and observed election instability and delayed requests.
+They have suggested two possible solutions in the face of partial partitions: the use of \emph{PreVote} mechanism and the network overlay routing ~\cite[Secs.~5]{jensen2021raft}.
+PreVote mechanism is an additional safety check in Raft where a node checks whether it could still become a leader before invoking a real election.
+This prevents disrupting the cluster during partial partitions. However, they claim that PreVote substiantially increases the commit latency during partial network partitions ~\cite[Secs.~5]{jensen2021raft}. 
+They suggested that the overlay networks might be a better solution in terms of reduced commit latency during partial partitions~\cite[Secs.~4--5]{jensen2021raft}. 
+However, they did not evaluate the overlay networks in a systematic way.
 
+Alfatafta et al.\ introduced Nifty, a transparent layer that re-routes traffic around failed paths. 
+Nifty masks partial partitions with low overhead in several production systems such as Apache Kafka, but not Raft~\cite[Secs.~6--7]{alfatafta2020nifty}. 
+They find that Nifty can restore progress with little overhead in case of partial network partition topologies.
+OmniPaxos instead changes consensus itself to handle partial connectivity, and notes that overlay routing may add hops and delay~\cite[Secs.~2,8]{ng2023omnipaxos}. 
+The most notable notion introduced by Omnipaxos is the majority quorum connectivity requirement during the leader election process.
+They also suggest network overlays as an alternative for handling partial partitions, however they assume that the use of overlay might increase the commit latency~\cite[Secs.~2,8]{ng2023omnipaxos}.
+
+More recent work explores protocol-level remedies. 
+HoliPaxos integrates failure detection with MultiPaxos and suppresses leader churn, evaluating partial partitions against OmniPaxos and Raft with and without PreVote and CheckQuorum [5, Secs. 3.1, 4.3]. 
+RaftOptima modifies Rafts election behaviour to limit repeated elections and introduces proxy leaders for replication scalability [6, Secs. IV–V]. 
+Qsync addresses partial partition livelock in leaderless Rabia consensus protocol through request queue synchronization [7, Secs. 4–5]. 
+Complementary work provides automated partition testing through Slicify [8] and probabilistic analysis of communication loss and Raft latency [9].
+
+These studies establish both the importance of partial connectivity and the availability of protocol-specific remedies.\
+However, the reviewed work does not systematically characterize overlay routing beneath an unchanged Raft protocol: which partial-connectivity topologies permit progress to be restored, and how detour delay interacts with election timeouts and commit latency. 
+This study targets this narrower gap.
 \subsection{Research Problem, Aim, and Research Questions}
 
 \textbf{Research problem.}
-The liveness benefit and commit-latency cost of transparent multi-hop routing for Raft under controlled partial partitions have not been experimentally characterised.
+Existing work establishes that Raft can lose liveness or experience election instability under partial connectivity~\cite[Sec.~4]{jensen2021raft}. 
+Nifty demonstrates that transparent multi-hop routing can mask partial partitions without changing the application~\cite[Secs.~6--7]{alfatafta2020nifty}, and similar routing has been proposed as a possible solution for Raft~\cite[Sec.~5]{jensen2021raft}. 
+However, the liveness benefit and commit-latency cost of applying such routing to Raft have not been experimentally characterized.
 
 \textbf{Aim.}
-Experimentally characterise transparent multi-hop routing as a network-layer resilience mechanism for Raft under a defined set of partial-connectivity topologies, in terms of liveness and commit latency, without modifying the consensus implementation.
+Experimentally characterize transparent multi-hop routing as a network-layer resilience mechanism for Raft under a defined set of partial-connectivity topologies, in terms of liveness and commit latency, without changing the consensus implementation itself.
 
 \textbf{Research questions.}
 \begin{enumerate}
-  \item \textbf{RQ1 (Liveness):} Across topologies T1--T4, in which cases does transparent multi-hop routing restore stable Raft progress compared with direct communication only?
-  \item \textbf{RQ2 (Latency):} How does added per-link delay on multi-hop paths affect client-observed commit latency when a follower reached through such a path belongs to the deciding majority?
+  \item \textbf{RQ1 (Liveness):} Across topologies T1--T4, in which cases does transparent multi-hop routing restore stable progress in Raft compared with peer-to-peer communication only?
+  \item \textbf{RQ2 (Latency):} How does added multi-hop overlay affect client-observed commit latency?
 \end{enumerate}
 
 \textbf{Hypotheses.}
-H1: Forwarding restores progress where the routed graph gives a viable leader bidirectional paths to a majority. H2: Commit latency increases with the extra round-trip of a forwarded path when that path is needed for the deciding majority, with little increase when a direct quorum remains.
+H1: Forwarding restores progress where the routed graph gives a viable leader bidirectional paths to a majority. 
+H2: Commit latency increases with the extra round-trip of a forwarded path when that path is needed for the deciding majority, with little increase when a direct quorum remains.
 
 \section{Research Method}
 
@@ -146,14 +185,14 @@ Unless noted, results refer to delays of \(0.5\,\mathrm{ms}\) and \(5\,\mathrm{m
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textwidth]{figures/rq1-throughput.pdf}
+  \includegraphics[width=0.95\textwidth]{figures/rq1-throughput.png}
   \caption{Mean observe-window commit throughput (\(\pm\)\,SD) by topology and mode.}
   \label{fig:rq1-thr}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.95\textwidth]{figures/rq2-latency.pdf}
+  \includegraphics[width=0.95\textwidth]{figures/rq2-latency.png}
   \caption{Mean of per-run median commit latencies (\(\pm\)\,SD). Missing bars: no successful commits.}
   \label{fig:rq2-lat}
 \end{figure}
@@ -171,7 +210,7 @@ Direct communication never recovers at any delay: throughput \(0\), fail rate \(
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.48\textwidth]{figures/rq1-t3-recovery.pdf}
+  \includegraphics[width=0.48\textwidth]{figures/rq1-t3-recovery.png}
   \caption{T3 forwarding recovery time (inject to first post-failure commit).}
   \label{fig:t3-rec}
 \end{figure}
