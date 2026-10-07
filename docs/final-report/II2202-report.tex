@@ -167,11 +167,18 @@ Two practical changes were made.
 The plan intended to run all trials on a single personal machine. To execute all experiments within the course deadline we moved execution to AWS EC2 instances, with each instance uploading Raft logs, client logs, and metrics to S3 for later merge.
 We also fixed the heartbeat at \(10\,\mathrm{ms}\) rather than testing against multiple heartbeat values, so that delays can be interpreted against one baseline heartbeat value.
 These changes preserve original research intentions while adapting to existing resources and time constraints.
-\subsection{Data, Materials, Participants, or Other Sources}
-We have two communication modes (direct and forwarding) to test against five topologies (T0--T4).
-Figure~\ref{fig:topologies} shows those five topologies. 
-Table~\ref{tab:independent-variables} shows the independent variables. 
-Table~\ref{tab:dependent-variables} shows the dependent variables.
+
+\subsection{Experimental Platform and Conditions}
+
+Evidence comes from timed Mininet trials of HashiCorp Raft~\cite{hashicorp_raft,lantz2010mininet,mininet230} under fixed topology, mode, and delay, with an open-loop client (\(100\) requests/s, \(64\,\mathrm{B}\)).
+There are no human participants or personal data.
+In direct mode, replicas use surviving point-to-point links; in forwarding mode, preconfigured Linux routes carry the same peer addresses over multi-hop paths.
+Heartbeat is fixed at \(10\,\mathrm{ms}\).
+Trials ran on AWS \texttt{c5a.large} workers with host-load monitoring; each instance uploaded client logs, Raft events, and metrics to S3 for merge into \texttt{dataset.jsonl}.
+Commit latency uses client-side timestamps.
+
+Figure~\ref{fig:topologies} shows topologies T0--T4 (healthy baseline, non-critical cut, quorum-loss, constrained election, chained connectivity).
+Tables~\ref{tab:independent-variables} and~\ref{tab:dependent-variables} list the independent and dependent variables.
 
 \begin{table}[htbp]
   \centering
@@ -212,17 +219,27 @@ Table~\ref{tab:dependent-variables} shows the dependent variables.
   \label{fig:topologies}
 \end{figure}
 
-\textbf{Factors and response variables.}
-Independent variables: mode \(\in\{\mathrm{direct},\mathrm{forwarding}\}\), topology \(\in\{\mathrm{T0},\ldots,\mathrm{T4}\}\), per-link delay \(\in\{0.5,5,20\}\,\mathrm{ms}\), heartbeat fixed at \(10\,\mathrm{ms}\). Dependent variables: observe-window commit throughput, recovery time (inject \(\rightarrow\) first successful post-failure commit), election/term counts, and client commit latency (median and 95th percentile over successful observes).
+Of the planned \(900\) trials (\(5\times 2\times 3\times 30\)), campaign \texttt{full-20261001A} produced \(117\) validated runs, \(43\) failures (mostly \(20\,\mathrm{ms}\) warm-up failures), and \(740\) not executed.
+A trial is included only if warm-up yields \(\geq 1\) commit, post-inject connectivity matches the intended residual graph, and artefacts are complete; otherwise it is excluded.
+Reported cells therefore typically have \(n=5\)--\(6\), and most \(20\,\mathrm{ms}\) cells are absent from comparisons.
+Interpretation is limited to this Mininet/HashiCorp setup, the five topologies, and a \(30\,\mathrm{s}\) observe window; in T4 a three-node majority is size two, so the missing \(B\)--\(C\) link is not critical for liveness under our workload.
 
 \subsection{Work Procedure and Data Collection}
 \label{sec:procedure}
 
-Each trial: (1)~start a clean Mininet topology and apply delay; (2)~boot replicas with the planned leader/log seed; (3)~warm up \(10\,\mathrm{s}\) and require \(\geq 1\) successful commit; (4)~inject the topology's failed links; (5)~observe \(30\,\mathrm{s}\); (6)~archive client logs, Raft events, timeline, host load, and tear down. Seeds are derived from base \(20260926\). The planned matrix was \(5\times 2\times 3\times 30=900\) trials; this report analyses the \(117\) trials that completed warm-up and validation. All \(20\,\mathrm{ms}\) runs for T0/T1/T2/T4 failed warm-up (cluster never stable with heartbeat \(10\,\mathrm{ms}\)); T3 at \(20\,\mathrm{ms}\) completed but made no progress.
+Each trial follows a fixed sequence: clean Mininet topology with the chosen per-link delay; boot replicas with the planned leader and log seed; start the open-loop client; warm up \(10\,\mathrm{s}\) (require \(\geq 1\) commit); inject the topology's failed links; observe \(30\,\mathrm{s}\); archive client logs, Raft events, timeline, and host load; tear down before the next run.
+Seeds are derived from base \(20260926\).
+Forwarding routes and failed-link sets are taken from topology YAML so both modes share peer addresses and differ only in path availability.
+Material deviations from the research plan are the AWS parallel campaign (instead of a single local VM), heartbeat fixed at \(10\,\mathrm{ms}\), target repetitions raised to \(30\) but only \(5\)--\(6\) completed per analysed cell, and exclusion of most \(20\,\mathrm{ms}\) cells after warm-up failure (T3 at \(20\,\mathrm{ms}\) completed warm-up but made no progress).
+Full artefact layout and campaign counts are in Appendix~A.
 
 \subsection{Data Analysis and Quality Assurance}
 
-For RQ1 we compare direct vs.\ forwarding within each topology on throughput, recovery, elections, and client fail rate; T0/T1 are controls. We treat the boolean \texttt{stable\_progress} flag as secondary because it can mark near-zero progress as ``stable''; primary claims use throughput and recovery. For RQ2 we summarise per-run median latency and contrast conditions where forwarding is required for the deciding majority (notably T2) with controls that retain a direct quorum (T0/T1). With \(5\)--\(6\) repetitions we report means and standard deviations rather than formal hypothesis tests. Connectivity validation after inject, host-load monitoring, and exclusion of warm-up failures limit contamination. All scripts, topology YAML, and \texttt{dataset.jsonl} are archived with the campaign.
+For RQ1, within each topology we compare direct vs.\ forwarding on observe-window commit throughput, recovery time (inject \(\rightarrow\) first post-failure commit), election/term counts, and client fail rate; T0/T1 are controls.
+Primary claims use throughput and recovery; the boolean \texttt{stable\_progress} flag is secondary because it can label near-zero progress as stable.
+For RQ2, we take the median (and 95th percentile) client commit latency per run and contrast cells where a forwarded follower is needed for the deciding majority (notably T2) with direct-quorum controls (T0/T1); when only forwarding is live (T3), latency is reported for that mode alone.
+With \(n=5\)--\(6\) we report means \(\pm\)\,SD rather than formal hypothesis tests.
+Validity is supported by paired conditions, fixed binaries and seeds, post-inject connectivity checks, host-load monitoring, and exclusion of invalid warm-ups; scripts, topology YAML, and \texttt{dataset.jsonl} are archived with the campaign (Appendix~A).
 
 \subsection{Use of AI Tools}
 
@@ -330,14 +347,26 @@ We experimentally compared direct Raft communication with transparent multi-hop 
 \bibliography{II2202-report}
 
 \newpage
-\unnumberedheading{Appendix A: Campaign completeness}
+\unnumberedheading{Appendix A: Procedure detail and campaign completeness}
 
+\textbf{Trial sequence (expanded).}
+(1)~Start a clean Mininet topology for the assigned T0--T4 scenario and apply the chosen per-link delay to all surviving links.
+(2)~Configure and start HashiCorp Raft replicas with the planned initial leader, log seed, and heartbeat \(10\,\mathrm{ms}\); in forwarding mode install the preconfigured Linux routes.
+(3)~Start the open-loop client (\(100\) requests/s, \(64\,\mathrm{B}\)).
+(4)~Warm up \(10\,\mathrm{s}\) and abort the trial if no successful commit occurs.
+(5)~Inject the topology's failed links; validate residual connectivity against the intended graph for the assigned mode.
+(6)~Observe \(30\,\mathrm{s}\) under the same client workload.
+(7)~Stop client and replicas, archive artefacts under a unique run id, and tear down Mininet before the next trial.
+Seeds are derived from base \(20260926\).
+
+\textbf{Campaign completeness.}
 Planned matrix: \(5\) topologies \(\times\) \(2\) modes \(\times\) \(3\) delays \(\times\) \(30\) repetitions \(= 900\) trials.
 Campaign \texttt{full-20261001A} yielded \(117\) validated successful trials, \(43\) failed
 (almost all \(20\,\mathrm{ms}\) warm-up failures on T0/T1/T2/T4), and \(740\) not executed.
-Analysis dataset: \texttt{experiments/viz/public/data/dataset.jsonl}.
+Workers: AWS \texttt{c5a.large}. Analysis dataset: \texttt{experiments/viz/public/data/dataset.jsonl}.
 Artefacts per successful run include \texttt{client.jsonl}, \texttt{events-*.jsonl},
 \texttt{timeline.json}, \texttt{metrics.json}, and \texttt{hostload.jsonl}.
+Experiment scripts, topology YAML, and forwarding rules are archived with the repository.
 
 \unnumberedheading{Appendix B: AI tool use (summary)}
 
