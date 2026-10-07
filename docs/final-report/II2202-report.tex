@@ -121,9 +121,7 @@ This study targets this narrower gap.
 \subsection{Research Problem, Aim, and Research Questions}
 
 \textbf{Research problem.}
-Existing work establishes that Raft can lose liveness or experience election instability under partial connectivity~\cite[Sec.~4]{jensen2021raft}. 
-Nifty demonstrates that transparent multi-hop routing can mask partial partitions without changing the application~\cite[Secs.~6--7]{alfatafta2020nifty}, and similar routing has been proposed as a possible solution for Raft~\cite[Sec.~5]{jensen2021raft}. 
-However, the liveness benefit and commit-latency cost of applying such routing to Raft have not been experimentally characterized.
+The liveness benefit and commit latency cost of applying network-layer multi-hop routing to Raft have not been experimentally characterized.
 
 \textbf{Aim.}
 Experimentally characterize transparent multi-hop routing as a network-layer resilience mechanism for Raft under a defined set of partial-connectivity topologies, in terms of liveness and commit latency, without changing the consensus implementation itself.
@@ -186,7 +184,6 @@ Table~\ref{tab:dependent-variables} shows the dependent variables.
     Communication mode & Point-to-Point (P2P) RPC, Multi-hop RPC forwarding \\
     Topology & T0--T4 \\
     Per-link delay & 0.5, 5, 20\,ms \\
-    Raft heartbeat interval & 1, 10, 500\,ms \\
     \bottomrule
   \end{tabular}
 \end{table}
