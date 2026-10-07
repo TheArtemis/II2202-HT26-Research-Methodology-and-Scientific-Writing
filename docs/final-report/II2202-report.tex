@@ -110,10 +110,10 @@ The most notable notion introduced by Omnipaxos is the majority quorum connectiv
 They also suggest network overlays as an alternative for handling partial partitions, however they assume that the use of overlay might increase the commit latency~\cite[Secs.~2,8]{ng2023omnipaxos}.
 
 More recent work explores protocol-level remedies. 
-HoliPaxos integrates failure detection with MultiPaxos and suppresses leader churn, evaluating partial partitions against OmniPaxos and Raft with and without PreVote and CheckQuorum [5, Secs. 3.1, 4.3]. 
-RaftOptima modifies Rafts election behaviour to limit repeated elections and introduces proxy leaders for replication scalability [6, Secs. IV–V]. 
-Qsync addresses partial partition livelock in leaderless Rabia consensus protocol through request queue synchronization [7, Secs. 4–5]. 
-Complementary work provides automated partition testing through Slicify [8] and probabilistic analysis of communication loss and Raft latency [9].
+HoliPaxos integrates failure detection with MultiPaxos and suppresses leader churn, evaluating partial partitions against OmniPaxos and Raft with and without PreVote and CheckQuorum ~\cite[Secs. 3.1, 4.3]{liang2025holipaxos}. 
+RaftOptima modifies Rafts election behaviour to limit repeated elections and introduces proxy leaders for replication scalability ~\cite[Secs. IV-V]{kondru2024raftoptima}[6, Secs. IV–V]. 
+Qsync addresses partial partition livelock in leaderless Rabia consensus protocol through request queue synchronization ~\cite[Secs. 4-5]{kida2026qsync}. 
+Complementary work provides automated partition testing through Slicify ~\cite{khaleel2024slicify} and probabilistic analysis of communication loss and Raft latency ~\cite{li2026consensusnetwork}.
 
 These studies establish both the importance of partial connectivity and the availability of protocol-specific remedies.\
 However, the reviewed work does not systematically characterize overlay routing beneath an unchanged Raft protocol: which partial-connectivity topologies permit progress to be restored, and how detour delay interacts with election timeouts and commit latency. 
@@ -130,32 +130,74 @@ Experimentally characterize transparent multi-hop routing as a network-layer res
 
 \textbf{Research questions.}
 \begin{enumerate}
-  \item \textbf{RQ1 (Liveness):} Across topologies T1--T4, in which cases does transparent multi-hop routing restore stable progress in Raft compared with peer-to-peer communication only?
+  \item \textbf{RQ1 (Liveness):} Across topologies T1--T4, in which cases does transparent multi-hop routing restore stable progress in Raft compared with direct communication only?
   \item \textbf{RQ2 (Latency):} How does added multi-hop overlay affect client-observed commit latency?
 \end{enumerate}
 
 \textbf{Hypotheses.}
-H1: Forwarding restores progress where the routed graph gives a viable leader bidirectional paths to a majority. 
-H2: Commit latency increases with the extra round-trip of a forwarded path when that path is needed for the deciding majority, with little increase when a direct quorum remains.
+\begin{enumerate}
+  \item \textbf{H1:} Network overlay restores progress during partial partitions in topologies where leader still can reach majority quorum via intermediate nodes.
+  \item \textbf{H2:} Commit latency increases during partial partitions where leader needs to reach majority quorum via intermediate nodes. During normal operation, little to no latency overhead is expected.
+\end{enumerate}
 
 \section{Research Method}
 
 \subsection{Research Design and Methodological Rationale}
 
-We answer both questions with a controlled quantitative experiment. For each topology and delay, direct point-to-point and multi-hop forwarding use the same HashiCorp Raft build, failed-link set, workload, and timing. The treatment is path availability (and the resulting path delay), not a change to Raft.
+We answer both questions with a controlled quantitative experiment. To conduct such experiment, we need at least the following:
 
-We did not use Nifty: its failure detection and route discovery would confound the effect of multi-hop communication with route installation time. Instead we preconfigure Linux routes and IP forwarding so that Raft peer addresses stay fixed while traffic traverses surviving bridges. Relative to the research plan, we moved from a single personal VM to an AWS worker fleet for throughput, fixed the heartbeat at \(10\,\mathrm{ms}\) (rather than sweeping it), and report a partial full-matrix campaign (\(\approx 5\)--\(6\) repetitions per completed condition instead of the planned \(30\)).
+\begin{enumerate}
+  \item Existing Raft implementation
+  \item Virtual network emulator to simulate partial and complete network topologies
+  \item A client to induce workload and entries to commit
+  \item Infrastructure to run our experiments
+\end{enumerate}
 
-\subsection{Experimental Platform, Conditions, and Evidence}
+HashiCorp's Raft implementation ~\cite{hashicorp_raft} was used for the experiment with the rationale that it is a widely used and adopted implementation of the protocol.
+Virtual network emulator was chosen to be Mininet 2.3.0~\cite{lantz2010mininet,mininet230} with the rationale that it is a widely used and adopted virtual network emulator.
+A client was chosen to be a simple open-loop client that submits \(100\) requests/s with \(64\,\mathrm{B}\) payloads.
+To produce statistically significant results, we need to run each experiment for at least \(30\) seconds (which would provide us with around \(30000\) entries to commit) and to repeat each run at least \(30\) times.
+For that, we changed our original plan to use our own hardware to run the experiments due to time constraints. Instead, we use multiple AWS EC2 instances of the same parameters (add parameters to appendix) to parallelize the experiments.
+To produce results, each EC2 instance uploads Raft logs, client logs, and metrics to S3 bucket. After the experiment, results from each instance were merged on our hardware.
 
-\textbf{Software.}
-Replicas run HashiCorp Raft v1.7.3~\cite{hashicorp_raft} via a thin Go server (\texttt{raftd}). An open-loop client submits \(100\) requests/s with \(64\,\mathrm{B}\) payloads. Networks are emulated with Mininet 2.3.0~\cite{lantz2010mininet,mininet230}: each host runs one replica; \texttt{TCLink} applies delay; failed links are removed at inject time. In direct mode, intermediate hosts do not forward Raft traffic. In forwarding mode, static routes and IP forwarding carry the same peer addresses over multi-hop paths.
+\subsection{Data, Materials, Participants, or Other Sources}
+We have two communication modes (direct and forwarding) to test against five topologies (T0--T4).
+Figure~\ref{fig:topologies} shows those five topologies. 
+Table~\ref{tab:independent-variables} shows the independent variables. 
+Table~\ref{tab:dependent-variables} shows the dependent variables.
 
-\textbf{Platform.}
-Campaign \texttt{full-20261001A} ran on eight AWS \texttt{c5a.large} workers (2\,vCPU, Ubuntu 22.04, region \texttt{eu-north-1}), Go 1.22.12, Mininet commit \texttt{d7f399d}. Host load on validated runs stayed well below the overload threshold (mean peak load1 \(\approx 1.25\); none overloaded).
+\begin{table}[htbp]
+  \centering
+  \caption{Independent variables.}
+  \label{tab:independent-variables}
+  \begin{tabular}{ll}
+    \toprule
+    Independent variable & Level \\
+    \midrule
+    Communication mode & Point-to-Point (P2P) RPC, Multi-hop RPC forwarding \\
+    Topology & T0--T4 \\
+    Per-link delay & 0.5, 5, 20\,ms \\
+    Raft heartbeat interval & 1, 10, 500\,ms \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
-\textbf{Topologies.}
-Figure~\ref{fig:topologies} shows the five scenarios. T0 is a five-node full mesh (healthy baseline). T1 removes only C--E while leader C keeps a direct majority. T2 is a quorum-loss star through A: leader C reaches A directly but not a majority. T3 isolates C with seeded logs that make A the only quorum-connected but outdated candidate. T4 is the three-node chain B--A--C with B as initial leader (majority size \(2\)).
+\begin{table}[htbp]
+  \centering
+  \caption{Dependent variables.}
+  \label{tab:dependent-variables}
+  \begin{tabular}{lll}
+    \toprule
+    Dependent variable & RQ & Definition \\
+    \midrule
+    Commit throughput & RQ1 & Committed and appended entries per second \\
+    Recovery time & RQ1 & Time from failure to first subsequent commit \\
+    Number of elections & RQ1 & Count during the observation window \\
+    Number of term changes & RQ1 & Count during the observation window \\
+    Commit latency & RQ2 & Client request-response delay \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \begin{figure}[H]
   \centering
