@@ -144,22 +144,31 @@ Experimentally characterize transparent multi-hop routing as a network-layer res
 
 \subsection{Research Design and Methodological Rationale}
 
-We answer both questions with a controlled quantitative experiment. To conduct such experiment, we need at least the following:
+We answer both research questions with a controlled quantitative experiment in an emulated network.
+Both RQs require paired comparisons under the same Raft implementation, failed links, workload, and timing so that differences can be attributed to communication mode and path delay.
+Performing repetitions on each condition should account for election timing, network scheduling, and other noise.
 
-\begin{enumerate}
-  \item Existing Raft implementation
-  \item Virtual network emulator to simulate partial and complete network topologies
-  \item A client to induce workload and entries to commit
-  \item Infrastructure to run our experiments
-\end{enumerate}
+The design is a comparison of communication mode (\(\mathrm{direct}\) vs.\ \(\mathrm{forwarding}\)) across five predefined topologies (T0--T4) and selected per-link delays.
+T0 is a healthy baseline and T1 a control in which the leader retains a direct majority after a non-critical cut. T2--T4 instantiate quorum-loss, constrained election, and chained connectivity.
+For RQ1, we observe whether commit progress is maintained or recovered after failure injection in each topology under both modes.
+For RQ2, we compare client commit latency when a forwarded path is needed for the deciding majority with control cases that retain a direct quorum.
+This structure matches the questions directly: topologies identify \emph{when} forwarding restores liveness, and delay levels quantify the latency cost of the extra hop.
 
-HashiCorp's Raft implementation ~\cite{hashicorp_raft} was used for the experiment with the rationale that it is a widely used and adopted implementation of the protocol.
-Virtual network emulator was chosen to be Mininet 2.3.0~\cite{lantz2010mininet,mininet230} with the rationale that it is a widely used and adopted virtual network emulator.
-A client was chosen to be a simple open-loop client that submits \(100\) requests/s with \(64\,\mathrm{B}\) payloads.
-To produce statistically significant results, we need to run each experiment for at least \(30\) seconds (which would provide us with around \(30000\) entries to commit) and to repeat each run at least \(30\) times.
-For that, we changed our original plan to use our own hardware to run the experiments due to time constraints. Instead, we use multiple AWS EC2 instances of the same parameters (add parameters to appendix) to parallelize the experiments.
-To produce results, each EC2 instance uploads Raft logs, client logs, and metrics to S3 bucket. After the experiment, results from each instance were merged on our hardware.
+We considered several alternatives and rejected them as less suitable for the stated questions.
+First, adaptive overlays such as Nifty combine failure detection, route discovery, and forwarding~\cite{alfatafta2020nifty}.
+Using Nifty would have confounded the effect of multi-hop path availability with discovery and installation latency. Instead, use minitet so that the treatment is path availability and delay alone.
+Second, protocol-level remedies (PreVote, Omni-Paxos-style quorum connectivity, HoliPaxos) change consensus behaviour rather than the network underneath an unchanged Raft~\cite{jensen2021raft,ng2023omnipaxos,liang2025holipaxos}.
+Those approaches answer a different question. Our aim is to evaluate a network-layer remedy without modifying the consensus implementation.
+Therefore we opted out for executable Mininet deployment for network emulation with HashiCorp Raft for consensus cluster~\cite{hashicorp_raft,lantz2010mininet}.
 
+We assume that preconfigured forwarding correctly realizes the intended network topology (T0--T4), that Mininet link delay overhead is negligible compared to artificial per-link delay, and that client observed latencies are sufficient for measuring commit latency.
+We constrain the study to HashiCorp Raft with a fixed heartbeat (\(10\,\mathrm{ms}\)), an open-loop client (\(100\) requests/s, \(64\,\mathrm{B}\) payloads), and a short observation window (\(30\,\mathrm{s}\)).
+
+Relative to the research plan, the methodological core---controlled Mininet experiment, direct vs.\ preconfigured forwarding, topologies T0--T4, and delay factors---is unchanged.
+Two practical changes were made.
+The plan intended to run all trials on a single personal machine. To execute all experiments within the course deadline we moved execution to AWS EC2 instances, with each instance uploading Raft logs, client logs, and metrics to S3 for later merge.
+We also fixed the heartbeat at \(10\,\mathrm{ms}\) rather than testing against multiple heartbeat values, so that delays can be interpreted against one baseline heartbeat value.
+These changes preserve original research intentions while adapting to existing resources and time constraints.
 \subsection{Data, Materials, Participants, or Other Sources}
 We have two communication modes (direct and forwarding) to test against five topologies (T0--T4).
 Figure~\ref{fig:topologies} shows those five topologies. 
@@ -210,6 +219,7 @@ Table~\ref{tab:dependent-variables} shows the dependent variables.
 Independent variables: mode \(\in\{\mathrm{direct},\mathrm{forwarding}\}\), topology \(\in\{\mathrm{T0},\ldots,\mathrm{T4}\}\), per-link delay \(\in\{0.5,5,20\}\,\mathrm{ms}\), heartbeat fixed at \(10\,\mathrm{ms}\). Dependent variables: observe-window commit throughput, recovery time (inject \(\rightarrow\) first successful post-failure commit), election/term counts, and client commit latency (median and 95th percentile over successful observes).
 
 \subsection{Work Procedure and Data Collection}
+\label{sec:procedure}
 
 Each trial: (1)~start a clean Mininet topology and apply delay; (2)~boot replicas with the planned leader/log seed; (3)~warm up \(10\,\mathrm{s}\) and require \(\geq 1\) successful commit; (4)~inject the topology's failed links; (5)~observe \(30\,\mathrm{s}\); (6)~archive client logs, Raft events, timeline, host load, and tear down. Seeds are derived from base \(20260926\). The planned matrix was \(5\times 2\times 3\times 30=900\) trials; this report analyses the \(117\) trials that completed warm-up and validation. All \(20\,\mathrm{ms}\) runs for T0/T1/T2/T4 failed warm-up (cluster never stable with heartbeat \(10\,\mathrm{ms}\)); T3 at \(20\,\mathrm{ms}\) completed but made no progress.
 
