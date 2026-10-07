@@ -23,7 +23,7 @@ variable "campaign_id" {
 variable "worker_count" {
   description = "Number of identical worker instances."
   type        = number
-  default     = 8
+  default     = 16
 
   validation {
     condition     = var.worker_count >= 1 && var.worker_count <= 20

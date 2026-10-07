@@ -86,6 +86,20 @@ After a batch:
 ./bin/harness summarize results/pilot
 ```
 
+## Sharding flags
+
+`harness run` accepts `--from` / `--limit` **before or after** the config path.
+Always prefer flags first on workers:
+
+```bash
+./bin/harness run --from 57 --limit 57 configs/full.yaml
+```
+
+Go’s `flag` package stops at the first positional argument, so an older
+`run configs/full.yaml --from 57` form silently ignored sharding (every worker
+ran the full matrix from index 0 until torn down — no `complete.json`).
+The worker unit and `reorderFlags` keep `--from`/`--limit` effective either way.
+
 ## Unit tests (no Mininet)
 
 ```bash

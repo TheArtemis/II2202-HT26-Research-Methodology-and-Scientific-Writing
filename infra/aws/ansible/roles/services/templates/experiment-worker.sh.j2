@@ -6,7 +6,7 @@ set -euo pipefail
 : "${RESULTS_DIR:=/opt/ii2202/experiments/results/full}"
 : "${CONFIG:=configs/full.yaml}"
 : "${FROM_TRIAL:=0}"
-: "${LIMIT_TRIALS:=113}"
+: "${LIMIT_TRIALS:=57}"
 : "${WORKER_ID:=unknown}"
 
 cd "${EXPERIMENTS_DIR}"
@@ -17,8 +17,10 @@ export MININETD_ADDR="${MININETD_ADDR:-/tmp/mininetd.sock}"
 
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
+# Flags must come before the config path: Go's flag package stops at the first
+# positional arg, so `run config.yaml --from N` silently ignores --from/--limit.
 set +e
-./bin/harness run "${CONFIG}" --from "${FROM_TRIAL}" --limit "${LIMIT_TRIALS}"
+./bin/harness run --from "${FROM_TRIAL}" --limit "${LIMIT_TRIALS}" "${CONFIG}"
 RC=$?
 set -e
 

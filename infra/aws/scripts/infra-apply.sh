@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create disposable 8-node fleet + write inventory.ini / fleet.json.
+# Create disposable 16-node fleet + write inventory.ini / fleet.json.
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh

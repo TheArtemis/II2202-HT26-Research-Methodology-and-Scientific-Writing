@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch equal shards: worker i → --from i*chunk --limit chunk (chunk=ceil(900/8)=113).
+# Launch equal shards: worker i → --from i*chunk --limit chunk (chunk=ceil(900/16)=57).
 set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=lib.sh

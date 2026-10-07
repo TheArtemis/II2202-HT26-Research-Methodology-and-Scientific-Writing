@@ -28,7 +28,7 @@ help:
 	@echo "Targets: bootstrap infra-apply configure qualify launch status collect merge watch finish infra-destroy"
 	@echo "Required for apply: CAMPAIGN_ID=… SSH_CIDR=<ip>/32"
 	@echo "Required for configure: GIT_SHA=<commit>"
-	@echo "Defaults: CONFIG=experiments/configs/full.yaml TOTAL_TRIALS=900 WORKERS=8 WATCH_INTERVAL_SEC=300"
+	@echo "Defaults: CONFIG=experiments/configs/full.yaml TOTAL_TRIALS=900 WORKERS=16 WATCH_INTERVAL_SEC=300"
 
 bootstrap:
 	@$(BASH) $(SCRIPTS)/bootstrap.sh

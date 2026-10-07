@@ -14,13 +14,122 @@ import json
 import os
 import shutil
 import sys
+import re
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+_REP_RE = re.compile(r"_r(\d+)$")
 
 
 def load_json(path: Path) -> Any:
     with path.open(encoding="utf-8") as f:
         return json.load(f)
+
+
+def parse_repetition(run_id: str, status: Dict[str, Any]) -> Optional[int]:
+    if isinstance(status.get("repetition"), int):
+        return int(status["repetition"])
+    m = _REP_RE.search(run_id)
+    return int(m.group(1)) if m else None
+
+
+def matrix_shape(config_src: Optional[Path]) -> Tuple[int, int]:
+    """Return (repetitions, conditions_per_rep) from experiment YAML if present."""
+    reps = int(os.environ.get("REPETITIONS", "30"))
+    per_rep = max(1, int(os.environ.get("TOTAL_TRIALS", "900")) // max(1, reps))
+    if not config_src or not config_src.is_file():
+        return reps, per_rep
+    try:
+        text = config_src.read_text(encoding="utf-8")
+    except OSError:
+        return reps, per_rep
+    # Minimal parse — avoid requiring PyYAML on the laptop.
+    m_reps = re.search(r"^\s*repetitions:\s*(\d+)\s*$", text, re.M)
+    if m_reps:
+        reps = int(m_reps.group(1))
+
+    def _list_len(key: str) -> Optional[int]:
+        m = re.search(rf"^\s*{key}:\s*\[([^\]]*)\]", text, re.M)
+        if not m:
+            return None
+        items = [x.strip() for x in m.group(1).split(",") if x.strip()]
+        return len(items) if items else None
+
+    n_topo = _list_len("topologies") or 5
+    n_mode = _list_len("modes") or 2
+    n_delay = _list_len("delays") or 3
+    n_hb = _list_len("heartbeats") or 1
+    per_rep = n_topo * n_mode * n_delay * n_hb
+    return reps, per_rep
+
+
+def build_campaign_status(
+    report: Dict[str, Any],
+    present: Dict[str, Dict[str, Any]],
+    failed_ids: set,
+    reps_planned: int,
+    per_rep: int,
+    campaign_id: str,
+) -> Dict[str, Any]:
+    by_rep: Dict[str, Dict[str, int]] = {}
+    for rep in range(1, reps_planned + 1):
+        by_rep[str(rep)] = {
+            "expected": per_rep,
+            "present": 0,
+            "ok": 0,
+            "failed": 0,
+            "not_started": per_rep,
+        }
+
+    for rid, st in present.items():
+        rep = parse_repetition(rid, st)
+        if rep is None:
+            continue
+        key = str(rep)
+        if key not in by_rep:
+            by_rep[key] = {
+                "expected": per_rep,
+                "present": 0,
+                "ok": 0,
+                "failed": 0,
+                "not_started": per_rep,
+            }
+        slot = by_rep[key]
+        slot["present"] += 1
+        if rid in failed_ids:
+            slot["failed"] += 1
+        else:
+            slot["ok"] += 1
+        slot["not_started"] = max(0, slot["expected"] - slot["present"])
+
+    complete_workers = int(report.get("complete_workers") or 0)
+    worker_count = int(report.get("worker_count") or 0)
+    present_n = int(report["present"])
+    expected_n = int(report["expected"])
+    if complete_workers >= worker_count > 0 and present_n >= expected_n:
+        phase = "complete"
+    elif complete_workers >= worker_count > 0:
+        phase = "workers_done_incomplete"
+    elif present_n > 0:
+        phase = "in_progress"
+    else:
+        phase = "not_started"
+
+    return {
+        "campaign_id": campaign_id,
+        "phase": phase,
+        "expected": expected_n,
+        "present": present_n,
+        "ok_count": int(report["ok_count"]),
+        "failed_count": int(report["failed_count"]),
+        "missing_count": int(report["missing_count"]),
+        "not_started": int(report["missing_count"]),
+        "complete_workers": complete_workers,
+        "worker_count": worker_count,
+        "repetitions_planned": reps_planned,
+        "conditions_per_repetition": per_rep,
+        "by_repetition": dict(sorted(by_rep.items(), key=lambda kv: int(kv[0]))),
+    }
 
 
 def iter_jsonl(path: Path) -> Iterable[Dict[str, Any]]:
@@ -116,16 +225,26 @@ def merge(
         shutil.copy2(config_src, merged_dir / "experiment.yaml")
 
     present_ids = set(present.keys())
+    failed_ids = set(failed)
     # Expected IDs unknown without expansion; report counts + missing vs expected N.
     missing_count = max(0, expected - len(present_ids))
+    campaign_id = os.environ.get("CAMPAIGN_ID", "")
+    fleet_path = workers_dir.parent / "fleet.json"
+    if not campaign_id and fleet_path.is_file():
+        try:
+            campaign_id = str(load_json(fleet_path).get("campaign_id") or "")
+        except (OSError, json.JSONDecodeError, TypeError):
+            campaign_id = ""
+
+    reps_planned, per_rep = matrix_shape(config_src)
     report = {
         "expected": expected,
         "present": len(present_ids),
-        "failed": sorted(set(failed)),
-        "failed_count": len(set(failed)),
+        "failed": sorted(failed_ids),
+        "failed_count": len(failed_ids),
         "missing": missing_count,
         "missing_count": missing_count,
-        "ok_count": len(present_ids) - len(set(failed)),
+        "ok_count": len(present_ids) - len(failed_ids),
         "workers": {
             name: {
                 "complete": worker_complete.get(name),
@@ -137,11 +256,25 @@ def merge(
         ),
         "worker_count": len(worker_dirs),
         "run_ids": sorted(present_ids),
+        "campaign_id": campaign_id,
+        "repetitions_planned": reps_planned,
+        "conditions_per_repetition": per_rep,
     }
+
+    status = build_campaign_status(
+        report, present, failed_ids, reps_planned, per_rep, campaign_id
+    )
+    report["by_repetition"] = status["by_repetition"]
+    report["phase"] = status["phase"]
 
     report_path = merged_dir / "validation-report.json"
     with report_path.open("w", encoding="utf-8") as f:
         json.dump(report, f, indent=2)
+        f.write("\n")
+
+    status_path = merged_dir / "campaign-status.json"
+    with status_path.open("w", encoding="utf-8") as f:
+        json.dump(status, f, indent=2)
         f.write("\n")
 
     return report
@@ -183,9 +316,10 @@ def main() -> int:
     print(
         f"merge: present={report['present']}/{report['expected']} "
         f"failed={report['failed_count']} missing={report['missing_count']} "
-        f"-> {args.merged_dir}"
+        f"phase={report.get('phase')} -> {args.merged_dir}"
     )
     print(f"merge: wrote {args.merged_dir / 'validation-report.json'}")
+    print(f"merge: wrote {args.merged_dir / 'campaign-status.json'}")
     return 0
 
 

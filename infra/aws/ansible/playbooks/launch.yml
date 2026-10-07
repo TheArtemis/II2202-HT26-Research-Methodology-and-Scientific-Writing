@@ -89,6 +89,6 @@
     - name: Report shard assignment
       ansible.builtin.debug:
         msg: >-
-          {{ inventory_hostname }}: harness run {{ config_path }}
-          --from {{ from_trial }} --limit {{ limit_trials }}
+          {{ inventory_hostname }}: harness run --from {{ from_trial }}
+          --limit {{ limit_trials }} {{ config_path }}
           → s3://{{ results_bucket }}/{{ s3_prefix }}workers/{{ inventory_hostname }}/

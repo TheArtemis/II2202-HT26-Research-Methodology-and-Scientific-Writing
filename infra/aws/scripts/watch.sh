@@ -19,15 +19,20 @@ echo "watch: campaign=${ID} region=${AWS_REGION} interval=${INTERVAL}s (Ctrl-C t
 echo "  viz data → ${VIZ_DATA}/dataset.jsonl"
 
 sync_viz() {
-  local merged dataset
+  local merged dataset status
   merged="$(campaign_local_dir)/merged"
   dataset="${merged}/dataset.jsonl"
+  status="${merged}/campaign-status.json"
   mkdir -p "${VIZ_DATA}"
   if [[ -f "${dataset}" ]]; then
     cp -f "${dataset}" "${VIZ_DATA}/dataset.jsonl"
     echo "watch: synced dataset.jsonl → viz ($(wc -l < "${dataset}" | tr -d ' ') rows)"
   else
     echo "watch: no dataset.jsonl yet"
+  fi
+  if [[ -f "${status}" ]]; then
+    cp -f "${status}" "${VIZ_DATA}/campaign-status.json"
+    echo "watch: synced campaign-status.json → viz"
   fi
 }
 

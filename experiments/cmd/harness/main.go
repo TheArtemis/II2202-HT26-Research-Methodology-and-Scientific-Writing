@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing/experiments/collect"
@@ -49,10 +50,10 @@ func usage() {
 Usage:
   harness list <config.yaml>              # print expanded trial run IDs
   harness dry-run <config.yaml>           # validate + expand, no Mininet
-  harness run <config.yaml> [flags]       # execute trials (requires mininetd)
+  harness run [flags] <config.yaml>       # execute trials (requires mininetd)
   harness summarize <results/dir>         # join runs → dataset.jsonl + dataset.csv
 
-Flags for run:
+Flags for run (before or after the config path):
   --from N     skip first N trials (0-based index)
   --limit N    run at most N trials (0 = all)
   --addr ADDR  mininetd unix socket or host:port
@@ -135,11 +136,15 @@ func cmdRun(args []string) error {
 	from := fs.Int("from", 0, "skip first N trials")
 	limit := fs.Int("limit", 0, "max trials to run (0=all)")
 	addr := fs.String("addr", "", "mininetd address")
-	if err := fs.Parse(args); err != nil {
+	// Go's flag package stops at the first non-flag arg, so
+	// `run config.yaml --from 113` previously ignored --from/--limit (all
+	// workers then ran the full matrix from index 0). Reorder so flags work
+	// before or after the config path.
+	if err := fs.Parse(reorderFlags(args)); err != nil {
 		return err
 	}
 	if fs.NArg() < 1 {
-		return fmt.Errorf("usage: harness run <config.yaml> [--from N] [--limit N]")
+		return fmt.Errorf("usage: harness run [--from N] [--limit N] <config.yaml>")
 	}
 	path := fs.Arg(0)
 	exp, err := harness.LoadExperimentFile(path)
@@ -210,4 +215,36 @@ func parseConfigArgs(args []string) (path string, rest []string, err error) {
 		return "", nil, fmt.Errorf("config yaml path required")
 	}
 	return args[0], args[1:], nil
+}
+
+// reorderFlags moves dash-flags (and their values) before positional args so
+// Go's flag.FlagSet can parse them when callers pass `config.yaml --from N`.
+func reorderFlags(args []string) []string {
+	valueFlags := map[string]bool{
+		"-from": true, "--from": true,
+		"-limit": true, "--limit": true,
+		"-addr": true, "--addr": true,
+	}
+	var flags, pos []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			pos = append(pos, args[i+1:]...)
+			break
+		}
+		if strings.HasPrefix(a, "-") {
+			flags = append(flags, a)
+			name, _, hasEq := strings.Cut(a, "=")
+			if hasEq {
+				continue
+			}
+			if valueFlags[name] && i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") {
+				i++
+				flags = append(flags, args[i])
+			}
+			continue
+		}
+		pos = append(pos, a)
+	}
+	return append(flags, pos...)
 }

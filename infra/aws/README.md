@@ -1,8 +1,8 @@
 # AWS EC2 experiment fleet
 
-Disposable **8-node** fleet in **eu-north-1** for the Stage-4 full campaign
+Disposable **16-node** fleet in **eu-north-1** for the Stage-4 full campaign
 ([`experiments/configs/full.yaml`](../../experiments/configs/full.yaml)): **30 repetitions → 900 trials**,
-sharded equally (**113 trials / worker**, `ceil(900/8)`). Workers upload **raw** shards to S3; your laptop merges,
+sharded equally (**57 trials / worker**, `ceil(900/16)`). Workers upload **raw** shards to S3; your laptop merges,
 summarizes, and refreshes the local viz. Compute is disposable; S3 (results + tfstate) is persistent.
 
 Run all Make targets from this directory (`cd infra/aws`). Terraform writes Ansible inventory to
@@ -14,26 +14,26 @@ maintain a YAML inventory by hand).
 | Item | Value |
 |------|--------|
 | Region | `eu-north-1` |
-| Workers | 8 × on-demand `c5a.large` (2 vCPU each = **16 vCPU**, full account quota) (Ubuntu 22.04) |
+| Workers | 16 × on-demand `c5a.large` (2 vCPU each = **32 vCPU**; needs On-Demand Standard quota ≥ 32) (Ubuntu 22.04) |
 | Campaign | `full.yaml`, `repetitions: 30` → **900** trials (`5 × 2 × 3 × 30`) |
-| Sharding | harness `--from` / `--limit` (equal chunks of 113) |
+| Sharding | harness `--from` / `--limit` (equal chunks of 57) |
 | Merge | **local laptop only** (workers never merge) |
 | Live viz | laptop polls S3 every **5 min**; browser auto-refreshes with `?live=1` |
 | SSH | restrict with `SSH_CIDR=<you>/32` |
 
 ## Timing math
 
-Per-trial wall time with `observe: 30s` is roughly **45–55s**. Across 8 workers:
+Per-trial wall time with `observe: 30s` is roughly **45–55s**. Across 16 workers:
 
-- 113 × 50s ≈ **94 min** of pure trial time per worker
+- 57 × 50s ≈ **48 min** of pure trial time per worker
 - Plus ~15–25 min for provision / Ansible / smoke qualify before `launch`
-- Expect ~2–3h wall clock for the full campaign; tear down with `make finish` / `make infra-destroy`
+- Expect ~1–1.5h wall clock for the full campaign; tear down with `make finish` / `make infra-destroy`
 
-Equal shard math (N=900, W=8):
+Equal shard math (N=900, W=16):
 
-- `chunk = ceil(900 / 8) = 113`
-- worker `i` → `--from $((i * 113)) --limit 113`
-- Ranges: `[0,113)`, `[113,226)`, …, `[791,904)` (last worker stops at trial 900)
+- `chunk = ceil(900 / 16) = 57`
+- worker `i` → `--from $((i * 57)) --limit 57`
+- Ranges: `[0,57)`, `[57,114)`, …, `[855,912)` (last worker stops at trial 900)
 - The harness expands with **repetition outermost**, so each shard covers a contiguous
   mix of topology×mode×delay conditions. That avoids confounding worker identity with
   topology as much as equal-sized shards allow.
@@ -46,7 +46,7 @@ Equal shard math (N=900, W=8):
 3. `make infra-apply CAMPAIGN_ID=full-YYYYMMDD SSH_CIDR=<you>/32`
    (writes `ansible/inventory.ini`, `ansible/fleet.json`, and `.campaign.env` for finish/destroy)
 4. `make configure GIT_SHA=…`
-5. `make qualify` (smoke on all 8)
+5. `make qualify` (smoke on all 16)
 6. `make launch CONFIG=experiments/configs/full.yaml`
 7. On the laptop (two terminals):
    - `cd experiments/viz && npm run sync-data && npm run dev`
@@ -97,11 +97,11 @@ ansible-playbook --version   # should show core 2.15+
 | Target | Action |
 |--------|--------|
 | `bootstrap` | Persistent S3 bucket + tfstate lock (once); writes `fleet/backend.hcl` |
-| `infra-apply` | Create 8 EC2 + `ansible/inventory.ini` / `fleet.json` / `.campaign.env` |
+| `infra-apply` | Create 16 EC2 + `ansible/inventory.ini` / `fleet.json` / `.campaign.env` |
 | `configure` | Ansible + pin `GIT_SHA` |
-| `qualify` | Smoke on all 8 |
+| `qualify` | Smoke on all 16 |
 | `launch` | Equal shards, start workers |
-| `status` | Count finalized runs / `complete.json` in S3 |
+| `status` | Count **unique** finalized run_ids / `complete.json` in S3 |
 | `collect` | `aws s3 sync` workers → `results/campaigns/<id>/workers/` |
 | `merge` | Union run dirs + manifests → `merged/`; run `./bin/harness summarize` **locally** |
 | `watch` | Loop every **5 min**: collect → merge → summarize → `viz` `sync-data` |
@@ -158,7 +158,7 @@ writes `merged/` on `finish` (and during `watch` if configured).
 ## Architecture (summary)
 
 ```text
-Operator laptop --terraform--> fleet (8× c5a.large)
+Operator laptop --terraform--> fleet (16× c5a.large)
 Operator laptop --ansible----> configure / launch shards
 Workers --------s3 sync------> campaigns/<id>/workers/...
 Laptop ---------s3 sync------> local cache → merge → summarize → viz/public/data/
