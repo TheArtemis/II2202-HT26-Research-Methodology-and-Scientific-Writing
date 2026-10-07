@@ -21,9 +21,9 @@ matrix:
   repetitions: 30
 
 timing:
-  cluster_ready_timeout: 30s
+  cluster_ready_timeout: 60s
   settle: 1s
-  warmup: 10s
+  warmup: 30s
   observe: 30s
   teardown_pause: 1s
 
