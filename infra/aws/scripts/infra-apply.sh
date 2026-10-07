@@ -26,6 +26,7 @@ fi
 [[ -n "${SSH_PUBLIC_KEY}" ]] || die "set SSH_PUBLIC_KEY or place ~/.ssh/id_ed25519.pub"
 
 WORKER_COUNT="${WORKERS:-$DEFAULT_WORKERS}"
+INSTANCE_TYPE="${INSTANCE_TYPE:-c5a.large}"
 
 cd "${TF_FLEET}"
 if [[ ! -f backend.hcl ]]; then
@@ -39,6 +40,7 @@ terraform apply -auto-approve \
   -var="ssh_cidr=${SSH_CIDR}" \
   -var="ssh_public_key=${SSH_PUBLIC_KEY}" \
   -var="worker_count=${WORKER_COUNT}" \
+  -var="instance_type=${INSTANCE_TYPE}" \
   ${RESULTS_BUCKET:+-var="results_bucket_name=${RESULTS_BUCKET}"}
 
 # Ensure outputs land where scripts expect (Terraform local_file defaults).

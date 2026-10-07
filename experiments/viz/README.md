@@ -32,9 +32,10 @@ npm run sync-data && npm run dev
 CAMPAIGN_ID=full-YYYYMMDD npm run watch-s3
 ```
 
-Live mode re-fetches `/data/dataset.jsonl` every **5 minutes** with a cache-bust query param and
-shows last refresh time + run count. Full lifecycle and S3 layout:
-[`infra/aws/README.md`](../../infra/aws/README.md).
+Live mode re-fetches `/data/dataset.jsonl` and `/data/campaign-status.json` every **5 minutes**
+with a cache-bust query param and shows campaign progress (ok / failed / not started, per-repetition
+grid, worker `complete.json` count). `make watch` / `npm run sync-data` copy both files into
+`public/data/`. Full lifecycle and S3 layout: [`infra/aws/README.md`](../../infra/aws/README.md).
 
 ## Views
 

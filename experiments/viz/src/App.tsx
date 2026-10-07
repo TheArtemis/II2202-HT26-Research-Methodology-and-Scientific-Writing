@@ -12,7 +12,7 @@ import {
   verdictLabel,
 } from "./aggregate";
 import { GroupedBarChart, HeatCell, LineChart, SimpleBars } from "./charts";
-import type { Filters, RunRow } from "./types";
+import type { CampaignStatus, Filters, RunRow } from "./types";
 
 const DIRECT = "#1d4ed8";
 const FWD = "#b45309";
@@ -49,6 +49,7 @@ export default function App() {
   const [live, setLive] = useState(readLiveFromUrl);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [liveStatus, setLiveStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [campaign, setCampaign] = useState<CampaignStatus | null>(null);
 
   const loadText = useCallback((text: string, label: string, resetFilters = true) => {
     const parsed = parseDatasetJSONL(text);
@@ -69,6 +70,23 @@ export default function App() {
     return true;
   }, []);
 
+  const fetchCampaignStatus = useCallback(async (bustCache: boolean) => {
+    const url = bustCache
+      ? `/data/campaign-status.json?t=${Date.now()}`
+      : "/data/campaign-status.json";
+    try {
+      const r = await fetch(url, { cache: "no-store" });
+      if (!r.ok) {
+        setCampaign(null);
+        return;
+      }
+      const data = (await r.json()) as CampaignStatus;
+      setCampaign(data);
+    } catch {
+      setCampaign(null);
+    }
+  }, []);
+
   const fetchDataset = useCallback(
     async (label: string, bustCache: boolean, resetFilters: boolean) => {
       const url = bustCache
@@ -78,13 +96,14 @@ export default function App() {
       if (!r.ok) throw new Error(`${r.status}`);
       const text = await r.text();
       const ok = loadText(text, label, resetFilters);
+      await fetchCampaignStatus(bustCache);
       if (ok) {
         setLastRefresh(new Date());
         setLiveStatus("ok");
       }
       return ok;
     },
-    [loadText],
+    [loadText, fetchCampaignStatus],
   );
 
   useEffect(() => {
@@ -184,22 +203,23 @@ export default function App() {
             className={live ? "live-btn on" : "live-btn"}
             onClick={toggleLive}
             aria-pressed={live}
-            title="Re-fetch /data/dataset.jsonl every 5 minutes (also ?live=1)"
+            title="Re-fetch dataset + campaign-status every 5 minutes (also ?live=1)"
           >
             {live ? "Live on" : "Live"}
           </button>
           <span className="source">
-            {rows.length > 0 ? `${rows.length} runs · ${source}` : "No data loaded yet"}
+            {rows.length > 0 ? `${rows.length} validated · ${source}` : "No data loaded yet"}
           </span>
         </div>
         {(live || lastRefresh) && (
           <p className={`live-status status-${live ? liveStatus : "idle"}`}>
             {live ? "Live · " : ""}
             last refresh {formatRefreshTime(lastRefresh)}
-            {rows.length > 0 ? ` · ${rows.length} runs` : ""}
+            {rows.length > 0 ? ` · ${rows.length} validated` : ""}
             {live ? " · polling every 5 min" : ""}
           </p>
         )}
+        {campaign && <CampaignProgress status={campaign} />}
         {error && <p className="error">{error}</p>}
       </header>
 
@@ -582,6 +602,94 @@ export default function App() {
         </>
       )}
     </div>
+  );
+}
+
+function phaseLabel(phase: string): string {
+  switch (phase) {
+    case "complete":
+      return "Complete";
+    case "workers_done_incomplete":
+      return "Workers done · matrix incomplete";
+    case "in_progress":
+      return "In progress";
+    case "not_started":
+      return "Not started";
+    default:
+      return phase;
+  }
+}
+
+function CampaignProgress({ status }: { status: CampaignStatus }) {
+  const pct = status.expected > 0 ? (100 * status.present) / status.expected : 0;
+  const okPct = status.expected > 0 ? (100 * status.ok_count) / status.expected : 0;
+  const failPct = status.expected > 0 ? (100 * status.failed_count) / status.expected : 0;
+  const reps = Object.entries(status.by_repetition || {});
+  const repsDone = reps.filter(([, r]) => r.present >= r.expected).length;
+  const repsPartial = reps.filter(([, r]) => r.present > 0 && r.present < r.expected).length;
+  const repsPending = Math.max(0, status.repetitions_planned - repsDone - repsPartial);
+
+  return (
+    <section className="campaign-progress" aria-label="Campaign progress">
+      <div className="campaign-progress-head">
+        <strong>{status.campaign_id || "campaign"}</strong>
+        <span className={`phase-pill phase-${status.phase}`}>{phaseLabel(status.phase)}</span>
+        <span className="muted">
+          workers {status.complete_workers}/{status.worker_count} complete.json
+        </span>
+      </div>
+      <div className="campaign-bars" title="Stacked: ok / failed / not started">
+        <div className="campaign-bar-track">
+          <div className="campaign-bar ok" style={{ width: `${okPct}%` }} />
+          <div className="campaign-bar fail" style={{ width: `${failPct}%` }} />
+        </div>
+        <span className="campaign-bar-label">
+          {status.present}/{status.expected} present ({pct.toFixed(1)}%)
+        </span>
+      </div>
+      <div className="campaign-stats">
+        <div className="campaign-stat">
+          <span className="stat-label">Completed (ok)</span>
+          <strong>{status.ok_count}</strong>
+        </div>
+        <div className="campaign-stat">
+          <span className="stat-label">Failed</span>
+          <strong className="neg">{status.failed_count}</strong>
+        </div>
+        <div className="campaign-stat">
+          <span className="stat-label">Not started</span>
+          <strong>{status.not_started}</strong>
+        </div>
+        <div className="campaign-stat">
+          <span className="stat-label">Repetitions</span>
+          <strong>
+            {repsDone} done · {repsPartial} partial · {repsPending} pending
+            <span className="muted"> / {status.repetitions_planned}</span>
+          </strong>
+        </div>
+      </div>
+      {reps.length > 0 && (
+        <div className="rep-grid" aria-label="Per-repetition status">
+          {reps.map(([rep, r]) => {
+            const kind =
+              r.present <= 0 ? "pending" : r.present >= r.expected ? "done" : "partial";
+            return (
+              <div
+                key={rep}
+                className={`rep-cell ${kind}`}
+                title={`r${rep}: ok=${r.ok} failed=${r.failed} not_started=${r.not_started}`}
+              >
+                <span className="rep-id">r{rep}</span>
+                <span className="rep-counts">
+                  {r.ok}/{r.expected}
+                  {r.failed > 0 ? ` · ${r.failed}f` : ""}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 

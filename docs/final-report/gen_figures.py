@@ -7,9 +7,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 
-ROOT = Path(r"f:\Projects\II2202-HT26-Research-Methodology-and-Scientific-Writing")
+ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "experiments" / "viz" / "public" / "data" / "dataset.jsonl"
-OUT = ROOT / "docs" / "final-report" / "figures"
+OUT = Path(__file__).resolve().parent / "figures"
 OUT.mkdir(parents=True, exist_ok=True)
 
 rows = [json.loads(l) for l in DATA.open(encoding="utf-8") if l.strip()]
@@ -149,6 +149,6 @@ fig.savefig(OUT / "rq1-t3-recovery.pdf")
 fig.savefig(OUT / "rq1-t3-recovery.png")
 plt.close(fig)
 
-print("Wrote figures to", OUT)
+print("Wrote figures to", OUT, f"({len(rows)} runs)")
 for p in sorted(OUT.glob("*")):
     print(" ", p.name, p.stat().st_size)

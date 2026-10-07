@@ -78,3 +78,27 @@ export type Rq1Verdict =
   | "direct_only"
   | "both_dead"
   | "incomplete";
+
+export interface RepetitionStatus {
+  expected: number;
+  present: number;
+  ok: number;
+  failed: number;
+  not_started: number;
+}
+
+export interface CampaignStatus {
+  campaign_id: string;
+  phase: "not_started" | "in_progress" | "workers_done_incomplete" | "complete" | string;
+  expected: number;
+  present: number;
+  ok_count: number;
+  failed_count: number;
+  missing_count: number;
+  not_started: number;
+  complete_workers: number;
+  worker_count: number;
+  repetitions_planned: number;
+  conditions_per_repetition: number;
+  by_repetition: Record<string, RepetitionStatus>;
+}
