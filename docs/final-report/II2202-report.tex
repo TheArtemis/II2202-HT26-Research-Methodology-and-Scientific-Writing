@@ -80,7 +80,8 @@ Partial network partitions can disrupt Raft even when nodes remain reachable thr
 
 Distributed databases, file systems, and cluster orchestration services rely on consensus to agree on a shared state.
 Raft is a leader-based protocol: the leader appends client entries and replicates them to followers, and an entry is committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}. 
-Progress requires that a leader communicates with a majority of followers. Safety is ensured under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
+To make progress leader must be able to reach a majority of followers. 
+Safety is ensured under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
 
 Complete network partitions are well understood---as long as there exists a majority of nodes that can communicate with each other, the entries can be committed.
 \emph{Partial} partitions are different---individual links fail while nodes remain virtually reachable through intermediate nodes~\cite[Sec.~2]{alfatafta2020nifty}. 
@@ -426,10 +427,9 @@ Finally, comparing different existing mitigation mechanisms such as PreVote mech
 
 \section{Conclusion}
 
-In summary, transparent multi-hop forwarding restores progress in the constrained-election topology T3 and preserves near-full throughput under quorum-loss T2 at \(0.5\,\mathrm{ms}\) link delay, while direct communication fails or degrades in those cases.
-Latency increase when a forwarded path participates in the deciding majority is observed.
-Overall, network-layer multi-hop routing is a protocol-preserving resilience option for selected partial partitions, provided Raft timeouts accommodate path delay and system administrators accept the measured latency and recovery costs.
+Our preliminary results show that transparent multi-hop forwarding can improve Raft's resilience to partial network partitions without changing the consensus protocol. Forwarding restored progress in the constrained-election topology (T3) and improved throughput under quorum loss (T2), where direct communication either failed to recover or suffered reduced performance. These benefits came at a latency cost when forwarded paths were needed to commit entries.
 
+Multi-hop routing is therefore a promising option for selected partial partitions, although its effectiveness depends on topology, path delay, and Raft's timeout settings. Further experiments with PreVote disabled are needed to distinguish the benefits of forwarding from those of the election mechanism.
 \newpage
 \bibliographystyle{myIEEEtran}
 \bibliography{II2202-report}
