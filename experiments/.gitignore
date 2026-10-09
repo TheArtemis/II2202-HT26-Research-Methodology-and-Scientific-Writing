@@ -1,0 +1,18 @@
+# Build artifacts
+/bin/
+*.exe
+
+# Experiment outputs
+/results/
+
+# Viz
+/viz/node_modules/
+/viz/dist/
+
+# Python
+__pycache__/
+*.pyc
+
+# Editor / OS
+.DS_Store
+*.swp

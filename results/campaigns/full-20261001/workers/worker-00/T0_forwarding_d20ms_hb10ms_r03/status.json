@@ -1,0 +1,15 @@
+{
+  "run_id": "T0_forwarding_d20ms_hb10ms_r03",
+  "ok": false,
+  "error": "warmup: only 0 commits (need \u003e= 1) — cluster not initially stable",
+  "started_at": "2026-10-01T10:24:43.593319978Z",
+  "finished_at": "2026-10-01T10:24:56.052940034Z",
+  "inject_at": "0001-01-01T00:00:00Z",
+  "leader": "D",
+  "seed": 20260991,
+  "topology": "T0",
+  "mode": "forwarding",
+  "delay": "20ms",
+  "heartbeat": "10ms",
+  "repetition": 3
+}

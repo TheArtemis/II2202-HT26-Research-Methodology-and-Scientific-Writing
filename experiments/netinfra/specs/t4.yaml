@@ -1,0 +1,11 @@
+# T4 — Chained connectivity (full 3-node mesh; failed B--C after inject)
+# Forwarding installs B↔C via A on the surviving path.
+name: T4
+nodes: [A, B, C]
+identity_cidr: 10.0.0.0/24
+initial_leader: B
+links:
+  - {endpoints: [A, B], failed: false}
+  - {endpoints: [A, C], failed: false}
+  - {endpoints: [B, C], failed: true}
+forwarding_routes: []

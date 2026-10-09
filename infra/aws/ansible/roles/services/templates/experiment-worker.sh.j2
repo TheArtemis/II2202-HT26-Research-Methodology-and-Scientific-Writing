@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# Run one equal shard of the campaign, then mark complete.json and force a final sync.
+set -euo pipefail
+
+: "${EXPERIMENTS_DIR:=/opt/ii2202/experiments}"
+: "${RESULTS_DIR:=/opt/ii2202/experiments/results/full}"
+: "${CONFIG:=configs/full.yaml}"
+: "${FROM_TRIAL:=0}"
+: "${LIMIT_TRIALS:=57}"
+: "${WORKER_ID:=unknown}"
+
+cd "${EXPERIMENTS_DIR}"
+mkdir -p "${RESULTS_DIR}"
+
+export PATH="/usr/local/go/bin:/usr/local/bin:${PATH}"
+export MININETD_ADDR="${MININETD_ADDR:-/tmp/mininetd.sock}"
+
+STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+# Flags must come before the config path: Go's flag package stops at the first
+# positional arg, so `run config.yaml --from N` silently ignores --from/--limit.
+set +e
+./bin/harness run --from "${FROM_TRIAL}" --limit "${LIMIT_TRIALS}" "${CONFIG}"
+RC=$?
+set -e
+
+FINISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+PRESENT=0
+if [[ -d "${RESULTS_DIR}" ]]; then
+  PRESENT="$(find "${RESULTS_DIR}" -mindepth 2 -maxdepth 2 -name status.json 2>/dev/null | wc -l | tr -d ' ')"
+fi
+
+export COMPLETE_PATH="${RESULTS_DIR}/complete.json"
+export WORKER_ID FROM_TRIAL LIMIT_TRIALS CONFIG STARTED_AT FINISHED_AT PRESENT RC
+python3 - <<'PY'
+import json, os
+doc = {
+    "worker_id": os.environ["WORKER_ID"],
+    "from_trial": int(os.environ["FROM_TRIAL"]),
+    "limit_trials": int(os.environ["LIMIT_TRIALS"]),
+    "config": os.environ["CONFIG"],
+    "started_at": os.environ["STARTED_AT"],
+    "finished_at": os.environ["FINISHED_AT"],
+    "ok": int(os.environ["RC"]) == 0,
+    "exit_code": int(os.environ["RC"]),
+    "error": "" if int(os.environ["RC"]) == 0 else f"harness exited {os.environ['RC']}",
+    "status_json_count": int(os.environ["PRESENT"]),
+}
+path = os.environ["COMPLETE_PATH"]
+with open(path, "w", encoding="utf-8") as f:
+    json.dump(doc, f, indent=2)
+    f.write("\n")
+print(f"wrote {path}: ok={doc['ok']} runs_with_status={doc['status_json_count']}")
+PY
+
+if [[ -x /usr/local/bin/results-sync.sh ]]; then
+  /usr/local/bin/results-sync.sh || true
+fi
+
+exit "${RC}"

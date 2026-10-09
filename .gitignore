@@ -1,19 +1,99 @@
-# LaTeX related files
+# --- OS / editors ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# --- Secrets / local env ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*secret*
+*credentials*
+
+# --- LaTeX build artifacts ---
 *.aux
-*.log
-*.out
-*.pdf
-*.synctex.gz
-*.toc
-*.lot
-*.lof
-*.lol
-*.lot
-*.lof
-*.lol
+*.bbl
+*.bcf
+*.blg
 *.fdb_latexmk
 *.fls
-*.bbl
-*.blg
+*.lof
+*.log
+*.lot
+*.lol
+*.nav
+*.out
+*.pdf
+*.run.xml
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*-blx.bib
+_minted*/
 
+# Keep literature PDFs in /data
 !/data/*.pdf
+
+# --- Go ---
+experiments/bin/
+*.exe
+*.test
+vendor/
+
+# --- Node / viz ---
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# --- Experiment / campaign outputs ---
+# Large run artifacts (kept local or synced from S3; not for git)
+/results/
+experiments/results/
+infra/aws/results/
+infra/aws/scripts/.cache/
+*.jsonl
+!experiments/viz/public/data/**
+
+# --- Terraform / AWS operator-local (also covered under infra/aws/) ---
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+*.tfvars
+!*.tfvars.example
+*.auto.tfvars
+!*.auto.tfvars.example
+backend.hcl
+!backend.hcl.example
+.campaign.env

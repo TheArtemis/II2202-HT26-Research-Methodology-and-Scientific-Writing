@@ -1,4 +1,4 @@
-\documentclass[tikz,border=7pt]{standalone}
+\documentclass[tikz,border=5pt]{standalone}
 
 \usepackage[T1]{fontenc}
 \usepackage[scaled=0.94]{helvet}
@@ -9,34 +9,31 @@
 \definecolor{failred}{HTML}{C0392B}
 \definecolor{overlayblue}{HTML}{1677B8}
 \definecolor{leadergold}{HTML}{F6C85F}
-\definecolor{qcblue}{HTML}{DCEEFF}
 \definecolor{panelgray}{HTML}{D1D5DB}
 \definecolor{textgray}{HTML}{4B5563}
 
 \tikzset{
-  replica/.style={circle, draw=linkgray, fill=white, line width=0.7pt,
-    minimum size=6.5mm, inner sep=0pt, font=\bfseries\scriptsize},
-  leader/.style={replica, fill=leadergold, double=linkgray, double distance=1pt},
-  qc/.style={replica, fill=qcblue, line width=1.1pt},
-  live/.style={draw=linkgray, line width=1.05pt},
-  failed/.style={draw=failred, line width=1.05pt, densely dashed},
-  route/.style={draw=overlayblue, line width=2.15pt, opacity=0.86,
-    {Stealth[length=2.2mm]}-{Stealth[length=2.2mm]},
-    shorten <=3.5mm, shorten >=3.5mm},
-  panel/.style={draw=panelgray, rounded corners=2pt, line width=0.55pt},
-  rowtitle/.style={anchor=west, font=\bfseries\small},
-  tag/.style={anchor=east, font=\scriptsize, text=textgray},
-  heading/.style={font=\bfseries\small, text=linkgray},
-  note/.style={font=\scriptsize, text=textgray, align=center}
+  replica/.style={circle, draw=linkgray, fill=white, line width=0.5pt,
+    minimum size=3.6mm, inner sep=0pt, font=\bfseries\tiny},
+  leader/.style={replica, fill=leadergold, double=linkgray, double distance=0.55pt},
+  live/.style={draw=linkgray, line width=0.55pt},
+  failed/.style={draw=failred, line width=0.55pt, densely dashed},
+  detour/.style={draw=overlayblue, line width=1.0pt, opacity=0.9,
+    {Stealth[length=1.15mm]}-{Stealth[length=1.15mm]}},
+  cell/.style={draw=panelgray, rounded corners=1.2pt, line width=0.4pt},
+  title/.style={anchor=west, font=\bfseries\scriptsize, text=linkgray},
+  tag/.style={anchor=east, font=\tiny, text=textgray},
+  heading/.style={font=\bfseries\scriptsize, text=linkgray},
+  note/.style={font=\tiny, text=textgray, align=center},
+  colhead/.style={font=\tiny, text=textgray}
 }
 
-% Fixed Omni-Paxos pentagonal arrangement used in every five-node view.
 \newcommand{\pentagoncoords}[1]{%
-  \coordinate (#1A) at (-1.10,0.30);
-  \coordinate (#1B) at (0,1.10);
-  \coordinate (#1C) at (1.10,0.30);
-  \coordinate (#1D) at (-0.68,-0.90);
-  \coordinate (#1E) at (0.68,-0.90);
+  \coordinate (#1A) at (-0.42,0.06);
+  \coordinate (#1B) at (0,0.40);
+  \coordinate (#1C) at (0.42,0.06);
+  \coordinate (#1D) at (-0.26,-0.34);
+  \coordinate (#1E) at (0.26,-0.34);
 }
 
 \newcommand{\alllinks}[1]{%
@@ -44,174 +41,134 @@
     {\draw[live] (#1\u)--(#1\v);}%
 }
 
-\newcommand{\fivenodes}[3]{%
-  \node[#2]      at (#1A) {A};
+\newcommand{\fivenodes}[2]{%
+  \node[replica] at (#1A) {A};
   \node[replica] at (#1B) {B};
-  \node[#3]      at (#1C) {C};
+  \node[#2]      at (#1C) {C};
   \node[replica] at (#1D) {D};
   \node[replica] at (#1E) {E};
 }
 
-\newcommand{\betweenarrow}{%
-  \draw[-{Stealth[length=2.4mm]},draw=panelgray,line width=1.4pt]
-    (-0.35,0.15)--(0.35,0.15);
+\newcommand{\routedvia}[4]{%
+  \draw[detour]
+    (#1#2) to[bend right=16] (#1#3)
+           to[bend right=16] (#1#4);
+}
+
+\newcommand{\miniarrow}{%
+  \draw[-{Stealth[length=1.2mm]},draw=panelgray,line width=0.7pt]
+    (-0.12,0)--(0.12,0);
+}
+
+% Title above cell; graphs only inside; notes well below cell.
+% #1 origin  #2 title  #3 tag  #4 left note  #5 right note  #6 left  #7 right
+\newcommand{\topocell}[7]{%
+  \begin{scope}[shift={#1}]
+    \node[title] at (-2.70,1.85) {#2};
+    \node[tag]   at ( 2.70,1.85) {#3};
+    % Tall cell: empty padding under graphs so captions never collide.
+    \draw[cell] (-2.70,-1.05) rectangle (2.70,1.58);
+    \node[colhead] at (-1.25,1.40) {direct};
+    \node[colhead] at ( 1.25,1.40) {forwarding};
+    \begin{scope}[shift={(-1.25,0.35)}]#6\end{scope}%
+    \begin{scope}[shift={(0,0.35)}]\miniarrow\end{scope}%
+    \begin{scope}[shift={(1.25,0.35)}]#7\end{scope}%
+    \node[note] at (-1.25,-1.32) {#4};
+    \node[note] at ( 1.25,-1.32) {#5};
+  \end{scope}
 }
 
 \begin{document}
 \begin{tikzpicture}[x=1cm,y=1cm]
 
-\node[heading] at (-3,11.15) {Direct communication only};
-\node[note] at (-3,10.84) {Raft uses only surviving direct links};
-\node[heading] at (3,11.15) {With transparent forwarding};
-\node[note] at (3,10.84) {same failures; blue paths are forwarded};
+\node[heading] at (0,6.35)
+  {T0--T4: direct links vs.\ transparent forwarding (blue $=$ detour around failures)};
 
-% T0 -------------------------------------------------------------------------
-\begin{scope}[shift={(0,8.65)}]
-  \draw[panel] (-7.85,-1.95) rectangle (7.85,1.95);
-  \node[rowtitle] at (-7.60,1.62) {T0  Full connectivity};
-  \node[tag] at (7.60,1.62) {project baseline · 5 nodes};
+% Row 1
+\topocell{(-5.85,3.55)}{T0~~Full connectivity}{baseline}
+  {stable leader C}{no detour}
+  {\pentagoncoords{a}\alllinks{a}\fivenodes{a}{leader}}
+  {\pentagoncoords{b}\alllinks{b}\fivenodes{b}{leader}}
 
-  \begin{scope}[shift={(-3,0.15)}]
-    \pentagoncoords{t0d}
-    \alllinks{t0d}
-    \fivenodes{t0d}{replica}{leader}
-  \end{scope}
-  \betweenarrow
-  \begin{scope}[shift={(3,0.15)}]
-    \pentagoncoords{t0o}
-    \alllinks{t0o}
-    \fivenodes{t0o}{replica}{leader}
-  \end{scope}
-  \node[note] at (-3,-1.55) {stable leader C};
-  \node[note] at (3,-1.55) {no detour is required};
-\end{scope}
-
-% T1 -------------------------------------------------------------------------
-\begin{scope}[shift={(0,4.55)}]
-  \draw[panel] (-7.85,-1.95) rectangle (7.85,1.95);
-  \node[rowtitle] at (-7.60,1.62) {T1  Non-critical cut};
-  \node[tag] at (7.60,1.62) {project control · 5 nodes};
-
-  \begin{scope}[shift={(-3,0.15)}]
-    \pentagoncoords{t1d}
+\topocell{(0,3.55)}{T1~~Non-critical cut}{control}
+  {direct quorum kept}{C$\leftrightarrow$E via A}
+  {%
+    \pentagoncoords{c}
     \foreach \u/\v in {A/B,A/C,A/D,A/E,B/C,B/D,B/E,C/D,D/E}
-      {\draw[live] (t1d\u)--(t1d\v);}
-    \draw[failed] (t1dC)--(t1dE);
-    \fivenodes{t1d}{replica}{leader}
-  \end{scope}
-  \betweenarrow
-  \begin{scope}[shift={(3,0.15)}]
-    \pentagoncoords{t1o}
+      {\draw[live] (c\u)--(c\v);}
+    \draw[failed] (cC)--(cE);
+    \fivenodes{c}{leader}
+  }{%
+    \pentagoncoords{d}
     \foreach \u/\v in {A/B,A/C,A/D,A/E,B/C,B/D,B/E,C/D,D/E}
-      {\draw[live] (t1o\u)--(t1o\v);}
-    \draw[failed] (t1oC)--(t1oE);
-    \draw[route] (t1oC)--(t1oA);
-    \draw[route] (t1oA)--(t1oE);
-    \fivenodes{t1o}{replica}{leader}
-  \end{scope}
-  \node[note] at (-3,-1.55) {C keeps a direct quorum};
-  \node[note] at (3,-1.55) {C $\leftrightarrow$ E via A};
+      {\draw[live] (d\u)--(d\v);}
+    \draw[failed] (dC)--(dE);
+    \routedvia{d}{C}{A}{E}
+    \fivenodes{d}{leader}
+  }
+
+\topocell{(5.85,3.55)}{T2~~Quorum-loss}{hub A}
+  {no direct majority}{C$\leftrightarrow$B,D via A}
+  {%
+    \pentagoncoords{e}
+    \foreach \u/\v in {B/C,B/D,B/E,C/D,C/E,D/E}{\draw[failed] (e\u)--(e\v);}
+    \foreach \u/\v in {A/B,A/C,A/D,A/E}{\draw[live] (e\u)--(e\v);}
+    \fivenodes{e}{leader}
+  }{%
+    \pentagoncoords{f}
+    \foreach \u/\v in {B/C,B/D,B/E,C/D,C/E,D/E}{\draw[failed] (f\u)--(f\v);}
+    \foreach \u/\v in {A/B,A/C,A/D,A/E}{\draw[live] (f\u)--(f\v);}
+    \routedvia{f}{C}{A}{B}
+    \routedvia{f}{C}{A}{D}
+    \fivenodes{f}{leader}
+  }
+
+% Row 2
+\topocell{(-2.95,-0.55)}{T3~~Constrained election}{C isolated}
+  {election blocked}{B$\leftrightarrow$D,E via A}
+  {%
+    \pentagoncoords{g}
+    \foreach \u/\v in {A/C,B/C,B/D,B/E,C/D,C/E,D/E}{\draw[failed] (g\u)--(g\v);}
+    \foreach \u/\v in {A/B,A/D,A/E}{\draw[live] (g\u)--(g\v);}
+    \fivenodes{g}{leader}
+  }{%
+    \pentagoncoords{h}
+    \foreach \u/\v in {A/C,B/C,B/D,B/E,C/D,C/E,D/E}{\draw[failed] (h\u)--(h\v);}
+    \foreach \u/\v in {A/B,A/D,A/E}{\draw[live] (h\u)--(h\v);}
+    \routedvia{h}{B}{A}{D}
+    \routedvia{h}{B}{A}{E}
+    \fivenodes{h}{leader}
+  }
+
+\topocell{(2.95,-0.55)}{T4~~Chained connectivity}{3 nodes}
+  {B and C cannot hear}{B$\leftrightarrow$C via A}
+  {%
+    \coordinate (iA) at (-0.42,0);
+    \coordinate (iB) at (0.30,0.28);
+    \coordinate (iC) at (0.30,-0.28);
+    \draw[live] (iB)--(iA); \draw[live] (iA)--(iC); \draw[failed] (iB)--(iC);
+    \node[replica] at (iA) {A}; \node[leader] at (iB) {B}; \node[replica] at (iC) {C};
+  }{%
+    \coordinate (jA) at (-0.42,0);
+    \coordinate (jB) at (0.30,0.28);
+    \coordinate (jC) at (0.30,-0.28);
+    \draw[live] (jB)--(jA); \draw[live] (jA)--(jC); \draw[failed] (jB)--(jC);
+    \draw[detour] (jB) to[bend left=22] (jA) to[bend left=22] (jC);
+    \node[replica] at (jA) {A}; \node[leader] at (jB) {B}; \node[replica] at (jC) {C};
+  }
+
+\begin{scope}[shift={(0,-2.70)}]
+  \node[note] at (0,0.35)
+    {T3 logs: A$[1,1]$ · B$[1,1,2]$ · C$[1,1,2,2]$ · D$[1,1,2]$ · E$[1,1]$};
+  \draw[live] (-4.8,0)--(-4.1,0);
+  \node[anchor=west,note] at (-3.95,0) {surviving};
+  \draw[failed] (-2.85,0)--(-2.15,0);
+  \node[anchor=west,note] at (-2.00,0) {failed};
+  \draw[detour] (-0.85,0) to[bend left=36] (-0.50,0.11) to[bend left=36] (-0.15,0);
+  \node[anchor=west,note] at (0.00,0) {detour around failure};
+  \node[leader,minimum size=3.0mm] at (2.55,0) {L};
+  \node[anchor=west,note] at (2.85,0) {initial leader};
 \end{scope}
-
-% T2 -------------------------------------------------------------------------
-\begin{scope}[shift={(0,0.45)}]
-  \draw[panel] (-7.85,-1.95) rectangle (7.85,1.95);
-  \node[rowtitle] at (-7.60,1.62) {T2  Quorum-loss};
-  \node[tag] at (7.60,1.62) {Omni-Paxos · 5 nodes};
-
-  \begin{scope}[shift={(-3,0.15)}]
-    \pentagoncoords{t2d}
-    \foreach \u/\v in {B/C,B/D,B/E,C/D,C/E,D/E}
-      {\draw[failed] (t2d\u)--(t2d\v);}
-    \foreach \u/\v in {A/B,A/C,A/D,A/E}{\draw[live] (t2d\u)--(t2d\v);}
-    \fivenodes{t2d}{qc}{leader}
-  \end{scope}
-  \betweenarrow
-  \begin{scope}[shift={(3,0.15)}]
-    \pentagoncoords{t2o}
-    \foreach \u/\v in {B/C,B/D,B/E,C/D,C/E,D/E}
-      {\draw[failed] (t2o\u)--(t2o\v);}
-    \foreach \u/\v in {A/B,A/C,A/D,A/E}{\draw[live] (t2o\u)--(t2o\v);}
-    \foreach \u/\v in {C/A,A/B,A/D}{\draw[route] (t2o\u)--(t2o\v);}
-    \fivenodes{t2o}{qc}{leader}
-  \end{scope}
-  \node[note] at (-3,-1.55) {leader C cannot reach a majority};
-  \node[note] at (3,-1.55) {C $\leftrightarrow$ B,D via A};
-\end{scope}
-
-% T3 -------------------------------------------------------------------------
-\begin{scope}[shift={(0,-3.65)}]
-  \draw[panel] (-7.85,-1.95) rectangle (7.85,1.95);
-  \node[rowtitle] at (-7.60,1.62) {T3  Constrained election};
-  \node[tag] at (7.60,1.62) {Omni-Paxos · 5 nodes};
-
-  \begin{scope}[shift={(-3,0.25)}]
-    \pentagoncoords{t3d}
-    \foreach \u/\v in {A/C,B/C,B/D,B/E,C/D,C/E,D/E}
-      {\draw[failed] (t3d\u)--(t3d\v);}
-    \foreach \u/\v in {A/B,A/D,A/E}{\draw[live] (t3d\u)--(t3d\v);}
-    \fivenodes{t3d}{qc}{leader}
-  \end{scope}
-  \betweenarrow
-  \begin{scope}[shift={(3,0.25)}]
-    \pentagoncoords{t3o}
-    \foreach \u/\v in {A/C,B/C,B/D,B/E,C/D,C/E,D/E}
-      {\draw[failed] (t3o\u)--(t3o\v);}
-    \foreach \u/\v in {A/B,A/D,A/E}{\draw[live] (t3o\u)--(t3o\v);}
-    \foreach \u/\v in {B/A,A/D,A/E}{\draw[route] (t3o\u)--(t3o\v);}
-    \fivenodes{t3o}{qc}{leader}
-  \end{scope}
-  \node[note] at (-3,-1.38) {connectivity and log freshness block election};
-  \node[note] at (3,-1.38) {B $\leftrightarrow$ D,E via A; C remains isolated};
-  \node[note] at (0,-1.72) {initial logs: A $[1,1]$ · B $[1,1,2]$ · C $[1,1,2,2]$ · D $[1,1,2]$ · E $[1,1]$};
-\end{scope}
-
-% T4 -------------------------------------------------------------------------
-\begin{scope}[shift={(0,-7.75)}]
-  \draw[panel] (-7.85,-1.95) rectangle (7.85,1.95);
-  \node[rowtitle] at (-7.60,1.62) {T4  Chained connectivity};
-  \node[tag] at (7.60,1.62) {Omni-Paxos experiment · 3 nodes};
-
-  \begin{scope}[shift={(-3,0.05)}]
-    \coordinate (t4dA) at (-1.15,0);
-    \coordinate (t4dB) at (0.75,0.78);
-    \coordinate (t4dC) at (0.75,-0.78);
-    \draw[live] (t4dB)--(t4dA);
-    \draw[live] (t4dA)--(t4dC);
-    \draw[failed] (t4dB)--(t4dC);
-    \node[replica] at (t4dA) {A};
-    \node[leader]  at (t4dB) {B};
-    \node[replica] at (t4dC) {C};
-  \end{scope}
-  \betweenarrow
-  \begin{scope}[shift={(3,0.05)}]
-    \coordinate (t4oA) at (-1.15,0);
-    \coordinate (t4oB) at (0.75,0.78);
-    \coordinate (t4oC) at (0.75,-0.78);
-    \draw[live] (t4oB)--(t4oA);
-    \draw[live] (t4oA)--(t4oC);
-    \draw[failed] (t4oB)--(t4oC);
-    \draw[route] (t4oB)--(t4oA);
-    \draw[route] (t4oA)--(t4oC);
-    \node[replica] at (t4oA) {A};
-    \node[leader]  at (t4oB) {B};
-    \node[replica] at (t4oC) {C};
-  \end{scope}
-  \node[note] at (-3,-1.55) {B and C cannot hear one another};
-  \node[note] at (3,-1.55) {B $\leftrightarrow$ C via A};
-\end{scope}
-
-% Legend ---------------------------------------------------------------------
-\draw[live] (-7.55,-10.35)--(-6.65,-10.35);
-\node[anchor=west,note] at (-6.45,-10.35) {working direct link};
-\draw[failed] (-3.65,-10.35)--(-2.75,-10.35);
-\node[anchor=west,note] at (-2.55,-10.35) {failed direct link};
-\draw[route,shorten <=0pt,shorten >=0pt] (0.45,-10.35)--(1.35,-10.35);
-\node[anchor=west,note] at (1.55,-10.35) {forwarded multi-hop path};
-\node[leader,minimum size=5.5mm] at (5.25,-10.35) {L};
-\node[anchor=west,note] at (5.65,-10.35) {leader before failure};
-
-\node[note] at (0,-10.85) {Blue paths run only over surviving direct links; they do not repair the failed links.};
 
 \end{tikzpicture}
 \end{document}

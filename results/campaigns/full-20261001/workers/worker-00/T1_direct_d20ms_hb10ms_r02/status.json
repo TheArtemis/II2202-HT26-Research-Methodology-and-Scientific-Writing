@@ -1,0 +1,15 @@
+{
+  "run_id": "T1_direct_d20ms_hb10ms_r02",
+  "ok": false,
+  "error": "warmup: only 0 commits (need \u003e= 1) — cluster not initially stable",
+  "started_at": "2026-10-01T10:04:06.734644258Z",
+  "finished_at": "2026-10-01T10:04:18.85644979Z",
+  "inject_at": "0001-01-01T00:00:00Z",
+  "leader": "D",
+  "seed": 20260964,
+  "topology": "T1",
+  "mode": "direct",
+  "delay": "20ms",
+  "heartbeat": "10ms",
+  "repetition": 2
+}

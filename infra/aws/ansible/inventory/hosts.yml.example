@@ -1,0 +1,69 @@
+# Example Ansible inventory (YAML). Terraform apply writes inventory.ini instead;
+# scripts accept either inventory.ini or inventory/hosts.yml.
+# Shard size: ceil(900/8) = 113.
+all:
+  children:
+    workers:
+      hosts:
+        worker-00:
+          ansible_host: 203.0.113.10
+          ansible_user: ubuntu
+          worker_index: 0
+          from_trial: 0
+          limit_trials: 113
+          instance_id: i-example000
+        worker-01:
+          ansible_host: 203.0.113.11
+          ansible_user: ubuntu
+          worker_index: 1
+          from_trial: 113
+          limit_trials: 113
+          instance_id: i-example001
+        worker-02:
+          ansible_host: 203.0.113.12
+          ansible_user: ubuntu
+          worker_index: 2
+          from_trial: 226
+          limit_trials: 113
+          instance_id: i-example002
+        worker-03:
+          ansible_host: 203.0.113.13
+          ansible_user: ubuntu
+          worker_index: 3
+          from_trial: 339
+          limit_trials: 113
+          instance_id: i-example003
+        worker-04:
+          ansible_host: 203.0.113.14
+          ansible_user: ubuntu
+          worker_index: 4
+          from_trial: 452
+          limit_trials: 113
+          instance_id: i-example004
+        worker-05:
+          ansible_host: 203.0.113.15
+          ansible_user: ubuntu
+          worker_index: 5
+          from_trial: 565
+          limit_trials: 113
+          instance_id: i-example005
+        worker-06:
+          ansible_host: 203.0.113.16
+          ansible_user: ubuntu
+          worker_index: 6
+          from_trial: 678
+          limit_trials: 113
+          instance_id: i-example006
+        worker-07:
+          ansible_host: 203.0.113.17
+          ansible_user: ubuntu
+          worker_index: 7
+          from_trial: 791
+          limit_trials: 113
+          instance_id: i-example007
+      vars:
+        ansible_python_interpreter: /usr/bin/python3
+        campaign_id: full-YYYYMMDD
+        results_bucket: ii2202-experiments-ACCOUNT
+        s3_prefix: campaigns/full-YYYYMMDD/
+        aws_region: eu-north-1
