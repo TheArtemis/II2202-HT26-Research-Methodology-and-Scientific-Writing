@@ -79,6 +79,11 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 
 ### Ansible version (required)
 
+`make configure` waits up to five minutes for SSH and Ansible connectivity, then
+up to five minutes for `cloud-init` to finish before gathering facts and installing
+packages. Workers that are still booting after Terraform creates them are retried
+during the connection wait.
+
 Ubuntu apt ships Ansible **2.10**, which breaks against pip Jinja2 **3.x**
 (`cannot import name 'environmentfilter'`). Configure then stops before installing
 `mininetd` / harness. Use pip ansible-core instead:

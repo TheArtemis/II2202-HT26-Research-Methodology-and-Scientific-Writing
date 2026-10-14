@@ -3,7 +3,7 @@
 - name: Configure experiment workers
   hosts: workers
   become: true
-  gather_facts: true
+  gather_facts: false
   vars:
     experiment_user: experiment
     experiment_home: /home/experiment
@@ -15,6 +15,20 @@
     go_version: "1.22.12"
     repo_url: "{{ lookup('env', 'REPO_URL') | default('https://github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing.git', true) }}"
     git_sha: "{{ lookup('env', 'GIT_SHA') | default('', true) }}"
+  pre_tasks:
+    - name: Wait for SSH and Ansible connectivity
+      ansible.builtin.wait_for_connection:
+        connect_timeout: 5
+        sleep: 5
+        timeout: 300
+      become: false
+
+    - name: Wait for cloud-init to finish
+      ansible.builtin.command: timeout 300 cloud-init status --wait
+      changed_when: false
+
+    - name: Gather worker facts
+      ansible.builtin.setup:
   roles:
     - common
     - awscli
