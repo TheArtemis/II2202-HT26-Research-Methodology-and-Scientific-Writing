@@ -1,0 +1,9 @@
+{
+  "run_id": "T2_forwarding_d5ms_hb500ms_r18",
+  "client_started_ns": 1791980968515451171,
+  "warmup_end_ns": 1791980998515556471,
+  "inject_at_ns": 1791980998698163444,
+  "inject_at": "2026-10-14T12:29:58.698163444Z",
+  "observe_end_ns": 1791981032292286476,
+  "clock": "CLOCK_REALTIME"
+}

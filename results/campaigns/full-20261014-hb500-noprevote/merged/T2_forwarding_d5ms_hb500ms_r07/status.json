@@ -1,0 +1,16 @@
+{
+  "run_id": "T2_forwarding_d5ms_hb500ms_r07",
+  "ok": true,
+  "started_at": "2026-10-14T12:42:37.82611579Z",
+  "finished_at": "2026-10-14T12:43:44.161426894Z",
+  "inject_at": "2026-10-14T12:43:10.276813635Z",
+  "inject_at_ns": 1791981790276813635,
+  "warmup_ok_commits": 2997,
+  "leader": "E",
+  "seed": 20261122,
+  "topology": "T2",
+  "mode": "forwarding",
+  "delay": "5ms",
+  "heartbeat": "500ms",
+  "repetition": 7
+}

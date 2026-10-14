@@ -1,0 +1,9 @@
+{
+  "run_id": "T4_forwarding_d500us_hb500ms_r08",
+  "client_started_ns": 1791980605740014239,
+  "warmup_end_ns": 1791980635740061580,
+  "inject_at_ns": 1791980635903727837,
+  "inject_at": "2026-10-14T12:23:55.903727837Z",
+  "observe_end_ns": 1791980670010163012,
+  "clock": "CLOCK_REALTIME"
+}

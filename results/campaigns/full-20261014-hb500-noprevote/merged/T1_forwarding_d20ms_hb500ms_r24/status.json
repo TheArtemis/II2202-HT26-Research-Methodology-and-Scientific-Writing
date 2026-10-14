@@ -1,0 +1,16 @@
+{
+  "run_id": "T1_forwarding_d20ms_hb500ms_r24",
+  "ok": true,
+  "started_at": "2026-10-14T12:32:56.787769054Z",
+  "finished_at": "2026-10-14T12:34:03.462279007Z",
+  "inject_at": "2026-10-14T12:33:28.94517431Z",
+  "inject_at_ns": 1791981208945174310,
+  "warmup_ok_commits": 2990,
+  "leader": "B",
+  "seed": 20261627,
+  "topology": "T1",
+  "mode": "forwarding",
+  "delay": "20ms",
+  "heartbeat": "500ms",
+  "repetition": 24
+}

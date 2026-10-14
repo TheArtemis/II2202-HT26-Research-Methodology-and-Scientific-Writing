@@ -1,0 +1,15 @@
+{
+  "run_id": "T3_forwarding_d500us_hb500ms_r24",
+  "ok": true,
+  "started_at": "2026-10-14T12:45:48.208832907Z",
+  "finished_at": "2026-10-14T12:46:41.441071542Z",
+  "inject_at": "2026-10-14T12:45:50.756137886Z",
+  "inject_at_ns": 1791981950756137886,
+  "leader": "D",
+  "seed": 20261637,
+  "topology": "T3",
+  "mode": "forwarding",
+  "delay": "500µs",
+  "heartbeat": "500ms",
+  "repetition": 24
+}

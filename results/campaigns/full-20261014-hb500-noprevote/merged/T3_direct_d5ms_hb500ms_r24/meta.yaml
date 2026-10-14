@@ -1,0 +1,31 @@
+run_id: T3_direct_d5ms_hb500ms_r24
+topology: T3
+mode: direct
+delay: 5ms
+heartbeat: 500ms
+repetition: 24
+seed: 20261635
+leader: C
+client_node: A
+peers:
+    A: 10.0.0.1
+    B: 10.0.0.2
+    C: 10.0.0.3
+    D: 10.0.0.4
+    E: 10.0.0.5
+workload:
+    rate: 100
+    payload_size: 64
+    apply_timeout: 2s
+    client_node: ""
+timing:
+    cluster_ready_timeout: 1m0s
+    settle: 1s
+    warmup: 30s
+    observe: 30s
+    teardown_pause: 1s
+raft:
+    raft_port: 7000
+    api_port: 7001
+    seed_t3: true
+    pre_vote_disabled: true

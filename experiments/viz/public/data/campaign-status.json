@@ -1,13 +1,13 @@
 {
-  "campaign_id": "full-20261007A",
-  "phase": "in_progress",
+  "campaign_id": "full-20261014-hb500-noprevote",
+  "phase": "complete",
   "expected": 900,
   "present": 900,
-  "ok_count": 607,
-  "failed_count": 293,
+  "ok_count": 900,
+  "failed_count": 0,
   "missing_count": 0,
   "not_started": 0,
-  "complete_workers": 0,
+  "complete_workers": 16,
   "worker_count": 16,
   "repetitions_planned": 30,
   "conditions_per_repetition": 30,
@@ -15,211 +15,211 @@
     "1": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "2": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "3": {
       "expected": 30,
       "present": 30,
-      "ok": 18,
-      "failed": 12,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "4": {
       "expected": 30,
       "present": 30,
-      "ok": 19,
-      "failed": 11,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "5": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "6": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "7": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "8": {
       "expected": 30,
       "present": 30,
-      "ok": 22,
-      "failed": 8,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "9": {
       "expected": 30,
       "present": 30,
-      "ok": 19,
-      "failed": 11,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "10": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "11": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "12": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "13": {
       "expected": 30,
       "present": 30,
-      "ok": 19,
-      "failed": 11,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "14": {
       "expected": 30,
       "present": 30,
-      "ok": 22,
-      "failed": 8,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "15": {
       "expected": 30,
       "present": 30,
-      "ok": 22,
-      "failed": 8,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "16": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "17": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "18": {
       "expected": 30,
       "present": 30,
-      "ok": 19,
-      "failed": 11,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "19": {
       "expected": 30,
       "present": 30,
-      "ok": 22,
-      "failed": 8,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "20": {
       "expected": 30,
       "present": 30,
-      "ok": 19,
-      "failed": 11,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "21": {
       "expected": 30,
       "present": 30,
-      "ok": 22,
-      "failed": 8,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "22": {
       "expected": 30,
       "present": 30,
-      "ok": 18,
-      "failed": 12,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "23": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "24": {
       "expected": 30,
       "present": 30,
-      "ok": 17,
-      "failed": 13,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "25": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "26": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "27": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "28": {
       "expected": 30,
       "present": 30,
-      "ok": 20,
-      "failed": 10,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "29": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     },
     "30": {
       "expected": 30,
       "present": 30,
-      "ok": 21,
-      "failed": 9,
+      "ok": 30,
+      "failed": 0,
       "not_started": 0
     }
   }
