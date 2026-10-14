@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -63,5 +64,45 @@ func TestSingleNodeApply(t *testing.T) {
 	defer resp.Body.Close()
 	if resp.StatusCode != 200 {
 		t.Fatalf("stats %d", resp.StatusCode)
+	}
+}
+
+func TestPreVoteWithoutQuorum(t *testing.T) {
+	for _, disabled := range []bool{false, true} {
+		t.Run(fmt.Sprintf("disabled=%v", disabled), func(t *testing.T) {
+			n, err := raftnode.Open(raftnode.Config{
+				ID:              "A",
+				BindIP:          "127.0.0.1",
+				RaftPort:        freePort(t),
+				APIPort:         freePort(t),
+				Peers:           map[string]string{"A": "127.0.0.1", "B": "[::1]"},
+				Heartbeat:       20 * time.Millisecond,
+				Bootstrap:       true,
+				PreVoteDisabled: disabled,
+				EventsPath:      filepath.Join(t.TempDir(), "events.jsonl"),
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { n.Close() })
+
+			deadline := time.Now().Add(3 * time.Second)
+			for n.Raft.State() != raft.Candidate {
+				if time.Now().After(deadline) {
+					t.Fatal("isolated node did not start an election campaign")
+				}
+				time.Sleep(5 * time.Millisecond)
+			}
+			// An isolated replica cannot win pre-vote. Its term must stay at the
+			// bootstrap term (1), unless pre-vote is disabled and it votes directly.
+			time.Sleep(600 * time.Millisecond)
+			term := n.Raft.Stats()["term"]
+			if disabled && term == "1" {
+				t.Fatal("term did not increase with pre-vote disabled")
+			}
+			if !disabled && term != "1" {
+				t.Fatalf("term increased to %s with pre-vote enabled and no quorum", term)
+			}
+		})
 	}
 }

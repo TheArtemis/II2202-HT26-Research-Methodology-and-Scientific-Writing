@@ -123,6 +123,7 @@ func cmdDryRun(args []string) error {
 	fmt.Printf("timing: settle=%s warmup=%s observe=%s\n",
 		exp.Timing.Settle.Duration, exp.Timing.Warmup.Duration, exp.Timing.Observe.Duration)
 	fmt.Printf("workload: rate=%.1f size=%d\n", exp.Workload.Rate, exp.Workload.PayloadSize)
+	fmt.Printf("raft: pre_vote_disabled=%v\n", exp.Raft.PreVoteDisabled)
 	if len(trials) > 0 {
 		fmt.Printf("first: %s\n", trials[0].RunID)
 		fmt.Printf("last:  %s\n", trials[len(trials)-1].RunID)

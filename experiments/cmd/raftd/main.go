@@ -18,6 +18,7 @@ func main() {
 	apiPort := flag.Int("api-port", raftnode.DefaultAPIPort, "HTTP Apply API port")
 	heartbeat := flag.Duration("heartbeat", raftnode.DefaultHeartbeat, "Raft heartbeat / lease interval")
 	election := flag.Duration("election", 0, "election timeout (default 5× heartbeat, min 50ms)")
+	preVoteDisabled := flag.Bool("pre-vote-disabled", false, "disable pre-vote before Raft elections")
 	bootstrap := flag.Bool("bootstrap", true, "bootstrap cluster config when stores are empty")
 	prefer := flag.Bool("prefer-leader", false, "shorten election timeout to win warm-up leadership")
 	netDelay := flag.Duration("network-delay", 0, "emulated per-link delay (scales election timeout)")
@@ -48,6 +49,7 @@ func main() {
 		Peers:           peerMap,
 		Heartbeat:       *heartbeat,
 		ElectionTimeout: *election,
+		PreVoteDisabled: *preVoteDisabled,
 		PreferLeader:    *prefer,
 		NetworkDelay:    *netDelay,
 		Bootstrap:       *bootstrap,
@@ -62,8 +64,8 @@ func main() {
 	}
 	defer n.Close()
 
-	fmt.Fprintf(os.Stderr, "raftd id=%s raft=%s api=%s heartbeat=%s election=%s net_delay=%s prefer_leader=%v\n",
-		cfg.ID, cfg.RaftAddr(), cfg.APIAddr(), cfg.Heartbeat, cfg.ElectionTimeout, cfg.NetworkDelay, cfg.PreferLeader)
+	fmt.Fprintf(os.Stderr, "raftd id=%s raft=%s api=%s heartbeat=%s election=%s net_delay=%s prefer_leader=%v pre_vote_disabled=%v\n",
+		cfg.ID, cfg.RaftAddr(), cfg.APIAddr(), cfg.Heartbeat, cfg.ElectionTimeout, cfg.NetworkDelay, cfg.PreferLeader, cfg.PreVoteDisabled)
 
 	sig := make(chan os.Signal, 1)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)

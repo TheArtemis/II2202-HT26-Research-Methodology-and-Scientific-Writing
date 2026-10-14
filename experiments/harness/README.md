@@ -24,6 +24,17 @@ Edit YAML to change rate, observe window, topologies, etc. Heartbeat defaults to
 (`5 × 2 × 3 × 30`). Cross `[5ms, 10ms, 500ms]` via `heartbeat-sweep.yaml`
 (HashiCorp clamps values below 5ms).
 
+Set `raft.pre_vote_disabled: true` to turn off HashiCorp Raft's pre-vote phase:
+
+```yaml
+raft:
+  pre_vote_disabled: true
+```
+
+Omitting the option or setting it to `false` keeps pre-vote enabled. The setting
+applies to every replica, including T3 reseeding restarts, and is recorded in
+`experiment.yaml`, each trial's `meta.yaml`, and replica startup logs.
+
 Trial expansion nests **repetition outermost** so contiguous `--from`/`--limit`
 shards each cover every topology×mode×delay (needed for equal EC2 sharding;
 see `infra/aws/README.md`).

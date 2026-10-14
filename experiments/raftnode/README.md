@@ -53,6 +53,7 @@ Flags of note:
 - `-prefer-leader` — shorter election timeout; use on the topology `initial_leader`.
 - `-seed-log 1,1,2,2` — T3 constrained-election log terms (per node; see plan).
 - `-bootstrap` — default true; identical full-voter config on every replica.
+- `-pre-vote-disabled` — skip pre-vote before elections (default false, so pre-vote is enabled).
 - Empty `-data-dir` → in-memory stores (clean per run).
 
 ### T3 seed logs

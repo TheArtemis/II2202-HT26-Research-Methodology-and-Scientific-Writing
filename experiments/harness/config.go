@@ -65,9 +65,10 @@ type WorkloadConfig struct {
 
 // RaftConfig tunes replica startup.
 type RaftConfig struct {
-	RaftPort int  `yaml:"raft_port"`
-	APIPort  int  `yaml:"api_port"`
-	SeedT3   bool `yaml:"seed_t3"`
+	RaftPort        int  `yaml:"raft_port"`
+	APIPort         int  `yaml:"api_port"`
+	SeedT3          bool `yaml:"seed_t3"`
+	PreVoteDisabled bool `yaml:"pre_vote_disabled"`
 }
 
 // QAConfig gates trial acceptance.

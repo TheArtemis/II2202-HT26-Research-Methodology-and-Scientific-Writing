@@ -31,6 +31,7 @@ workload:
   client_node: ""   # initial_leader (B for T4)
 
 raft:
+  pre_vote_disabled: false
   raft_port: 7000
   api_port: 7001
   seed_t3: true

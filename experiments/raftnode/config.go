@@ -31,6 +31,8 @@ type Config struct {
 	Heartbeat time.Duration
 	// ElectionTimeout overrides the derived election timeout when > 0.
 	ElectionTimeout time.Duration
+	// PreVoteDisabled skips pre-vote before elections (default false).
+	PreVoteDisabled bool
 	// PreferLeader shortens this node's election timeout so it wins warm-up.
 	PreferLeader bool
 	// NetworkDelay is the emulated per-link delay; used to keep election ≫ RTT.

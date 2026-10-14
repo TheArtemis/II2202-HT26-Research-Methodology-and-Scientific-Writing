@@ -28,6 +28,7 @@ workload:
   apply_timeout: 2s
 
 raft:
+  pre_vote_disabled: false
   seed_t3: true
 
 qa:

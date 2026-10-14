@@ -372,6 +372,7 @@ func (r *Runner) startReplicas(trial Trial, opts replicaStartOpts) error {
 			"-api-port", strconv.Itoa(r.Exp.Raft.APIPort),
 			"-heartbeat", trial.Heartbeat.String(),
 			"-network-delay", trial.Delay.String(),
+			"-pre-vote-disabled=" + strconv.FormatBool(r.Exp.Raft.PreVoteDisabled),
 			"-events", events,
 		}
 		if opts.PreferLeader && id == trial.Leader {
@@ -690,6 +691,7 @@ type trialMetaFile struct {
 	Peers      map[string]string `yaml:"peers"`
 	Workload   WorkloadConfig    `yaml:"workload"`
 	Timing     TimingConfig      `yaml:"timing"`
+	Raft       RaftConfig        `yaml:"raft"`
 }
 
 func trialMeta(t Trial, exp Experiment) trialMetaFile {
@@ -706,5 +708,6 @@ func trialMeta(t Trial, exp Experiment) trialMetaFile {
 		Peers:      t.Peers,
 		Workload:   exp.Workload,
 		Timing:     exp.Timing,
+		Raft:       exp.Raft,
 	}
 }

@@ -86,6 +86,7 @@ func Open(cfg Config) (*Node, error) {
 	rc := raft.DefaultConfig()
 	rc.LocalID = raft.ServerID(cfg.ID)
 	rc.Logger = logger
+	rc.PreVoteDisabled = cfg.PreVoteDisabled
 	election := deriveElectionTimeout(cfg)
 	// HashiCorp starts follower elections on HeartbeatTimeout (not ElectionTimeout).
 	// Non-preferred nodes with an explicit long ElectionTimeout therefore also get

@@ -35,6 +35,7 @@ workload:
   client_node: ""
 
 raft:
+  pre_vote_disabled: false
   raft_port: 7000
   api_port: 7001
   seed_t3: true
