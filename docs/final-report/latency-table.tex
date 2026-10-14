@@ -1,0 +1,27 @@
+\begin{table}[H]
+  \centering
+  \caption{Mean of per-run median commit latencies (ms), with the number of runs having successful observe requests. Each condition has 30 validated trials.}
+  \label{tab:latency}
+  \footnotesize
+  \begin{tabular}{llrrrr}
+    \toprule
+    Topology & Delay (ms) & Direct & $n$ & Forwarding & $n$ \\
+    \midrule
+    T0 & 0.5 & 2.42 & 30 & 2.53 & 30 \\
+    T0 & 5 & 19.27 & 30 & 19.60 & 30 \\
+    T0 & 20 & 83.16 & 30 & 84.66 & 30 \\
+    T1 & 0.5 & 2.41 & 28 & 2.71 & 30 \\
+    T1 & 5 & 18.67 & 26 & 20.94 & 30 \\
+    T1 & 20 & 82.27 & 23 & 90.84 & 30 \\
+    T2 & 0.5 & 2.41 & 30 & 4.08 & 30 \\
+    T2 & 5 & 28.23 & 30 & 37.49 & 30 \\
+    T2 & 20 & 99.47 & 30 & 166.21 & 30 \\
+    T3 & 0.5 & -- & 0 & 3.57 & 30 \\
+    T3 & 5 & -- & 0 & 35.81 & 30 \\
+    T3 & 20 & -- & 0 & 147.77 & 30 \\
+    T4 & 0.5 & 1.96 & 21 & 2.81 & 30 \\
+    T4 & 5 & 14.21 & 19 & 18.21 & 30 \\
+    T4 & 20 & 71.69 & 23 & 86.80 & 30 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
