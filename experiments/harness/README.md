@@ -18,11 +18,15 @@ Orchestrates the research-plan trial loop against Mininet + HashiCorp Raft:
 | `configs/pilot.yaml` | Stage 3 pilot (5 reps) | **150** |
 | `configs/full.yaml` | Stage 4 main (30 reps) | **900** |
 | `configs/heartbeat-sweep.yaml` | Optional heartbeat IV | 60 |
+| `configs/t0-timeout-check.yaml` | Short T0 baseline at all three delays and both modes | 6 |
 
-Edit YAML to change rate, observe window, topologies, etc. Heartbeat defaults to
-`10ms` so the main matrix matches the plan’s 900-run target
-(`5 × 2 × 3 × 30`). Cross `[5ms, 10ms, 500ms]` via `heartbeat-sweep.yaml`
-(HashiCorp clamps values below 5ms).
+Edit YAML to change rate, observe window, topologies, etc. The main matrix keeps
+`matrix.heartbeats: [500ms]` fixed across per-link delays `[0.5ms, 5ms, 20ms]`,
+preserving the 900-run target (`5 × 2 × 3 × 30`). This value sets HashiCorp Raft's
+follower timeout, leader lease, and commit timeout. A two-hop path at 20ms per link
+has at least 80ms RTT, so 500ms leaves margin for processing and scheduling.
+Validate steady progress on T0 at every delay before running the full campaign.
+The optional `heartbeat-sweep.yaml` crosses `[100ms, 250ms, 500ms]` at 5ms link delay.
 
 Set `raft.pre_vote_disabled: true` to turn off HashiCorp Raft's pre-vote phase:
 
@@ -79,7 +83,7 @@ results/pilot/
   experiment.yaml
   manifest.jsonl
   dataset.jsonl / dataset.csv   # after: harness summarize
-  T4_forwarding_d5ms_hb10ms_r01/
+  T4_forwarding_d5ms_hb500ms_r01/
     meta.yaml
     status.json
     timeline.json               # phase markers (inject_at_ns, …)

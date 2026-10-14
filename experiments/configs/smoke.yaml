@@ -14,7 +14,7 @@ matrix:
   topologies: [t4]
   modes: [direct, forwarding]
   delays: [5ms]
-  heartbeats: [10ms]
+  heartbeats: [500ms]
   repetitions: 1
 
 timing:

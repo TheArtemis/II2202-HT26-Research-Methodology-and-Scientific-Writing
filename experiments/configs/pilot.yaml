@@ -1,8 +1,8 @@
 # Pilot — Stage 3: five repetitions of every main-matrix condition.
 #
 # Research-plan main matrix = topologies × modes × delays × reps
-# (heartbeat fixed at 10ms so 5×2×3×5 = 150 pilot runs; full uses 20 reps → 600).
-# Add heartbeats [1ms, 10ms, 500ms] later if crossing that IV (HashiCorp floor 5ms).
+# (heartbeat timeout fixed at 500ms so 5×2×3×5 = 150 pilot runs; full uses 30 reps → 900).
+# Use heartbeat-sweep.yaml to vary the timeout after validating the pilot.
 name: pilot
 description: Five pilot runs per condition for variability and runtime estimates.
 output_dir: results/pilot
@@ -18,7 +18,7 @@ matrix:
   topologies: [t0, t1, t2, t3, t4]
   modes: [direct, forwarding]
   delays: [0.5ms, 5ms, 20ms]
-  heartbeats: [10ms]
+  heartbeats: [500ms]
   repetitions: 5
 
 timing:

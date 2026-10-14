@@ -11,8 +11,8 @@ const (
 	DefaultRaftPort = 7000
 	// DefaultAPIPort is the client-facing HTTP Apply API port.
 	DefaultAPIPort = 7001
-	// DefaultHeartbeat is the research-plan mid-range heartbeat interval.
-	DefaultHeartbeat = 10 * time.Millisecond
+	// DefaultHeartbeat is the main experiment's follower timeout and leader lease.
+	DefaultHeartbeat = 500 * time.Millisecond
 )
 
 // Config configures one Raft replica.

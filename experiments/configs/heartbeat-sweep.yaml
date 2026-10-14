@@ -1,7 +1,7 @@
 # Optional heartbeat sweep (run after pilot confirms the main matrix).
-# Note: HashiCorp Raft clamps heartbeat < 5ms up to 5ms.
+# Timeouts exceed the two-hop delay-only RTT of 20ms at the selected link delay.
 name: heartbeat-sweep
-description: Cross heartbeat IV on T1/T4 only (control + chain) for RQ sensitivity.
+description: Cross heartbeat timeout on T1/T4 only (control + chain) for RQ sensitivity.
 output_dir: results/heartbeat-sweep
 
 binaries:
@@ -12,7 +12,7 @@ matrix:
   topologies: [t1, t4]
   modes: [direct, forwarding]
   delays: [5ms]
-  heartbeats: [5ms, 10ms, 500ms]
+  heartbeats: [100ms, 250ms, 500ms]
   repetitions: 5
 
 timing:

@@ -3,7 +3,7 @@
 # Freeze workload/timing after pilot before using this file.
 # AWS fleet: shard equally across 16 workers (ceil(900/16)=57 trials each); see infra/aws/README.md.
 name: full
-description: Main experimental matrix (900 runs with heartbeat fixed at 10ms).
+description: Main experimental matrix (900 runs with heartbeat timeout fixed at 500ms).
 output_dir: results/full
 
 binaries:
@@ -17,7 +17,7 @@ matrix:
   topologies: [t0, t1, t2, t3, t4]
   modes: [direct, forwarding]
   delays: [0.5ms, 5ms, 20ms]
-  heartbeats: [10ms]
+  heartbeats: [500ms]
   repetitions: 30
 
 timing:

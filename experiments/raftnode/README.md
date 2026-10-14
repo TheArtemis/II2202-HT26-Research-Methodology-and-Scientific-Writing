@@ -40,16 +40,16 @@ PEERS=$(./bin/netctl peers t4)          # e.g. A=10.0.0.1,B=10.0.0.2,C=10.0.0.3
 
 # On host B (T4 initial_leader), then A and C — example via netctl exec:
 ./bin/netctl exec B -- /path/raftd -id B -bind 10.0.0.2 -peers "$PEERS" \
-  -heartbeat 10ms -prefer-leader -events /tmp/raft-B.jsonl &
+  -heartbeat 500ms -prefer-leader -events /tmp/raft-B.jsonl &
 ./bin/netctl exec A -- /path/raftd -id A -bind 10.0.0.1 -peers "$PEERS" \
-  -heartbeat 10ms -events /tmp/raft-A.jsonl &
+  -heartbeat 500ms -events /tmp/raft-A.jsonl &
 ./bin/netctl exec C -- /path/raftd -id C -bind 10.0.0.3 -peers "$PEERS" \
-  -heartbeat 10ms -events /tmp/raft-C.jsonl &
+  -heartbeat 500ms -events /tmp/raft-C.jsonl &
 ```
 
 Flags of note:
 
-- `-heartbeat` — research IV (1 / 10 / 500 ms). HashiCorp enforces a **5 ms floor**.
+- `-heartbeat` — follower timeout, leader lease, and commit timeout (default 500ms).
 - `-prefer-leader` — shorter election timeout; use on the topology `initial_leader`.
 - `-seed-log 1,1,2,2` — T3 constrained-election log terms (per node; see plan).
 - `-bootstrap` — default true; identical full-voter config on every replica.
