@@ -80,24 +80,26 @@ Partial network partitions can disrupt Raft even when nodes remain reachable thr
 \subsection{Background and Rationale}
 
 Distributed databases, file systems, and cluster orchestration services rely on consensus to agree on a shared state.
-Raft is a leader-based protocol: the leader appends client entries and replicates them to followers, and an entry is committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}.
+Raft is a leader-based consensus protocol --- the leader appends client entries and replicates them to followers with an entry considered to be committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}.
 To make progress leader must be able to reach a majority of followers.
+Otherwise, the cluster is unable to make progress until new leader is elected.
 Safety is ensured under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
 
 Complete network partitions are well understood---as long as there exists a majority of nodes that can communicate with each other, the entries can be committed.
 \emph{Partial} partitions are different---individual links fail while nodes remain virtually reachable through intermediate nodes~\cite[Sec.~2]{alfatafta2020nifty}.
-Raft assumes direct point-to-point communication and does not forward messages through intermediates~\cite[Secs.~5.1--5.3]{ongaro2014raft}.
-A leader that loses two direct follower links may therefore stall even though those followers remain reachable at the network layer.
+Raft assumes direct point-to-point communication links between nodes and does not forward messages through intermediate nodes~\cite[Secs.~5.1--5.3]{ongaro2014raft}.
+For example, in a three node cluster, a leader that loses two direct follower links may therefore stall even though those followers remain reachable at the network layer.
 A notable real-world example is the Cloudflare outage in 2020, where a partial network failure disrupted etcd's Raft cluster~\cite{cloudflare2020byzantine}.
 
 We therefore test whether forwarding messages through surviving links restores Raft's progress and measure its latency cost.
 
 \subsection{Theory and Related Work}
 
-Jensen et al.\ studied etcd's Raft under partial failures and observed election instability and delayed requests.
-They have suggested two possible solutions in the face of partial partitions: the use of the \emph{PreVote} mechanism and network overlay routing~\cite[Sec.~5]{jensen2021raft}.
-PreVote mechanism is an additional safety check in Raft where a node checks whether it could still become a leader before invoking a real election.
-This prevents disrupting the cluster during partial partitions. However, they claim that PreVote substantially increases the commit latency during partial network partitions~\cite[Sec.~5]{jensen2021raft}.
+Jensen et al.\ studied etcd's Raft under partial network partitions and observed election instability and delayed requests.
+They have suggested two possible solutions in the face of partial network topologies: the use of the \emph{PreVote} mechanism and network overlay routing~\cite[Sec.~5]{jensen2021raft}.
+PreVote mechanism is an additional safety check in Raft where a node checks whether it could still become a leader before initiating a real election.
+This prevents disrupting the cluster during partial partitions. 
+However, they claim that PreVote substantially increases the commit latency during partial network partitions~\cite[Sec.~5]{jensen2021raft}.
 They suggested that the overlay networks might be a better solution in terms of reduced commit latency during partial partitions~\cite[Secs.~4--5]{jensen2021raft}.
 However, they did not evaluate the overlay networks in a systematic way.
 
@@ -137,9 +139,22 @@ Measure whether transparent multi-hop forwarding restores progress in the tested
 
 \subsection{Research Design and Methodological Rationale}
 
-We answer both research questions with a controlled quantitative experiment in an emulated network.
-Both RQs require paired comparisons under the same Raft implementation, failed links, workload, and timing so that differences can be attributed to communication mode and path delay.
-Performing repetitions on each condition should account for election timing, network scheduling, and other noise.
+We answer both research questions through a controlled quantitative experiment with systematic network failure injection.
+The network is emulated using Mininet and is populated by required number of Raft nodes and links for each tested topology.
+In order to answer both research questions, we need to establish the behavior of Raft cluster under the same partial network topologies using default point-to-point links only.
+Thus, we have to repeat each experiment with both direct communication mode (using point-to-point links only) and forwarding mode (shortest route to the next available alternative).
+We decided to use some of the partial network topologies from Omnipaxos paper ~\cite{ng2023omnipaxos} as they expose scenarios under which leader can still reach majority quorum via intermediate nodes.
+In addition, same experiments are repeated with different artificial per-link delays.
+Other parameters and conditions such as computing resources, heartbeat timeout, client workload rate, payload size and observation periods are kept constant.
+This design aims to isolate the effect of multi-hop communication within each topology and delay.
+
+Each experiment run consists of the warmup period allowing the cluster to elect stable leader. 
+The client is started which sends requests to the cluster at the constant rate, and awaits and records the timestamps of acknowledged requests.
+After such period, required links are cut to match the topology under test.
+Afterwards, the cluster is observed for $30$ seconds and results are collected.
+However, we acknowledge that there might be some variability between the identical runs due to network scheduling, runtime warmup unpredictability and other factors.
+To minimize the impact of such variability in our results, we repeat each experiment run $30$ times.
+This is known systems benchmarking strategy that uses repetitions allowing researches to be aware of measurement uncertainty~\cite{kalibera2013rigorous}.
 
 The design is a comparison of communication mode (\(\mathrm{direct}\) vs.\ \(\mathrm{forwarding}\)) across five predefined topologies (T0--T4) and selected per-link delays.
 T0 is a healthy baseline and T1 a control in which the leader retains a direct majority after a non-critical cut. T2--T4 instantiate quorum-loss, constrained election, and chained connectivity.
@@ -263,9 +278,7 @@ AI tools assisted with the Mininet and cluster executables, figure and table gen
 \section{Results}
 
 The campaign comprised \(900\) trials: five topologies, two communication modes, three per-link delays, and \(30\) repetitions per condition.
-All \(900\) passed validation, with no missing or failed trials. Heartbeat timeout was \(500\,\mathrm{ms}\).
-The campaign supports comparisons at all three delays.
-Passing validation does not imply sustained client progress: \(450/450\) forwarding runs and \(309/450\) direct runs satisfy the stable-progress heuristic.
+All \(900\) passed validation, with no failed runs with a heartbeat timeout of \(500\,\mathrm{ms}\).
 
 Figure~\ref{fig:rq1-thr} shows client-observed throughput across the complete delay matrix, and Figure~\ref{fig:rq2-lat} shows the mean of per-run median latencies on successful requests.
 
@@ -285,20 +298,35 @@ Figure~\ref{fig:rq1-thr} shows client-observed throughput across the complete de
 
 \subsection{RQ1: Client progress and recovery}
 
-T0 sustains progress in all \(180\) runs, with throughput between \(99.75\) and \(100.00\) commits/s across modes and delays. No election events were recorded after injection. Mean injection-to-first-client-commit times range from \(4.43\) to \(14.53\,\mathrm{ms}\). No warm-up election events were recorded in any T0/T1/T2/T4 trial.
+T0 sustains progress in all \(180\) runs, with throughput between \(99.75\) and \(100.00\) commits/s across modes and delays. 
+No further elections were observed in this topology after warmup.
+Mean time to first successful commit range from \(4.43\) to \(14.53\,\mathrm{ms}\). 
+No warmup election events were recorded in any T0/T1/T2/T4 trial confirming the stability of the experimental Raft setup.
 
-In T1, forwarding maintains stable progress in all \(90\) runs and averages \(99.70\)--\(99.79\) commits/s. Direct mode has zero successful observe requests in \(2/30\), \(4/30\), and \(7/30\) runs at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively. Its corresponding mean throughputs are \(93.20\), \(86.53\), and \(76.50\) commits/s. All \(13\) zero-throughput runs have initial leader E, while the client remains on C. The C--E link is cut. In inspected event logs, the leader retains a quorum while the client cannot reach it. These observations establish an end-to-end availability benefit, without establishing a consensus liveness failure.
+In T1, forwarding maintains stable progress in all \(90\) runs and averages \(99.70\)--\(99.79\) commits/s. 
+Meanwhile, direct mode has zero successful observe requests in \(2/30\), \(4/30\), and \(7/30\) runs at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively. 
+Its corresponding mean throughputs are \(93.20\), \(86.53\), and \(76.50\) commits/s. 
+All \(13\) zero-throughput runs have initial leader E, while the client remains on C. 
+The C--E link is cut. 
+In inspected event logs, the leader retains a quorum while the client cannot reach it. 
+These observations establish an end-to-end availability benefit, without establishing a consensus liveness failure.
 
 T2 provides the clearest throughput contrast where the initial leader loses a direct quorum.
 At \(0.5\,\mathrm{ms}\), direct throughput is \(63.34\pm11.99\) commits/s and forwarding reaches \(96.93\pm1.82\).
-At \(5\,\mathrm{ms}\), the values are \(52.27\pm26.43\) and \(95.78\pm2.36\); at \(20\,\mathrm{ms}\), they are \(55.88\pm22.28\) and \(94.46\pm1.33\).
-Forwarding satisfies the stable-progress heuristic in all \(90\) runs, compared with \(79/90\) for direct mode. Mean recorded election counts are \(4.10\), \(5.83\), and \(7.50\) with forwarding, versus \(19.97\), \(74.00\), and \(52.33\) with direct communication.
-Mean injection-to-first-client-commit times are \(20.70\), \(147.88\), and \(261.03\,\mathrm{ms}\) with forwarding, compared with \(940.59\), \(426.60\), and \(396.05\,\mathrm{ms}\) with direct communication.
+At \(5\,\mathrm{ms}\), the values are \(52.27\pm26.43\) and \(95.78\pm2.36\). 
+At \(20\,\mathrm{ms}\), they are \(55.88\pm22.28\) and \(94.46\pm1.33\).
+Forwarding satisfies the stable progress in all \(90\) runs, compared with \(79/90\) for direct mode. 
+Mean recorded election counts are \(4.10\), \(5.83\), and \(7.50\) with forwarding, versus \(19.97\), \(74.00\), and \(52.33\) with direct communication.
+Mean time to first succesful commit are \(20.70\), \(147.88\), and \(261.03\,\mathrm{ms}\) with forwarding, compared with \(940.59\), \(426.60\), and \(396.05\,\mathrm{ms}\) with direct communication.
 
 In T3, direct communication produces no successful client commits in any of the \(90\) runs and has a \(100\%\) client failure rate.
-Forwarding makes stable progress in all \(90\) runs. Mean throughput using injection-to-end timing is \(59.48\pm0.06\), \(58.96\pm0.10\), and \(57.45\pm0.11\) commits/s at the three delays.
-These values include setup before the client starts. Using client-start-to-end timing, the corresponding mean throughputs are \(99.97\), \(99.86\), and \(99.48\) commits/s.
-Mean injection-to-first-client-commit times are \(20.44\pm0.05\), \(20.87\pm0.08\), and \(22.12\pm0.10\,\mathrm{s}\) (Figure~\ref{fig:t3-rec}); the client itself starts approximately \(20.42\), \(20.81\), and \(21.95\,\mathrm{s}\) after injection. These recovery measurements include replica restart, health checks, and leader probing and cannot be interpreted as election delay alone.
+Forwarding makes stable progress in all \(90\) runs. 
+Mean throughput using injection-to-end timing is \(59.48\pm0.06\), \(58.96\pm0.10\), and \(57.45\pm0.11\) commits/s at the three delays.
+These values include setup before the client starts. 
+From the start of the client requests, the corresponding mean throughputs are \(99.97\), \(99.86\), and \(99.48\) commits/s.
+Mean time to first succesful commit are \(20.44\pm0.05\), \(20.87\pm0.08\), and \(22.12\pm0.10\,\mathrm{s}\) (Figure~\ref{fig:t3-rec})
+The client itself starts approximately \(20.42\), \(20.81\), and \(21.95\,\mathrm{s}\) after injection. 
+These recovery measurements include replica restart, health checks, and leader probing and cannot be interpreted as election delay alone.
 
 \begin{figure}[H]
   \centering
@@ -308,30 +336,46 @@ Mean injection-to-first-client-commit times are \(20.44\pm0.05\), \(20.87\pm0.08
 \end{figure}
 
 In T4, forwarding averages \(99.75\)--\(99.94\) commits/s and maintains stable progress in all \(90\) runs.
-Direct throughput averages \(69.99\), \(63.31\), and \(76.51\) commits/s at \(0.5\), \(5\), and \(20\,\mathrm{ms}\). There are \(9/30\), \(11/30\), and \(7/30\) zero-throughput runs, respectively. All \(27\) have initial leader C with the client on B and the B--C link cut.
-The three-node majority still has size two, so C can retain a quorum with A. As in T1, client reachability must be distinguished from consensus progress. Direct mode satisfies the stable-progress heuristic in \(63/90\) runs.
+Direct throughput averages \(69.99\), \(63.31\), and \(76.51\) commits/s at \(0.5\), \(5\), and \(20\,\mathrm{ms}\). 
+There are \(9/30\), \(11/30\), and \(7/30\) zero-throughput runs, respectively. All \(27\) have initial leader C with the client on B and the B--C link cut.
+The three-node majority still has size two, so C can retain a quorum with A. 
+Direct mode satisfies the stable progress heuristic in \(63/90\) runs.
 
 \subsection{RQ2: Commit latency}
 
 \input{latency-table.tex}
 
-In T0, forwarding changes mean median latency from \(2.42\) to \(2.53\,\mathrm{ms}\) at \(0.5\,\mathrm{ms}\) delay, from \(19.27\) to \(19.60\,\mathrm{ms}\) at \(5\,\mathrm{ms}\), and from \(83.16\) to \(84.66\,\mathrm{ms}\) at \(20\,\mathrm{ms}\). These are small descriptive differences.
+In T0, forwarding changes mean median latency from \(2.42\) to \(2.53\,\mathrm{ms}\) at \(0.5\,\mathrm{ms}\) delay, from \(19.27\) to \(19.60\,\mathrm{ms}\) at \(5\,\mathrm{ms}\), and from \(83.16\) to \(84.66\,\mathrm{ms}\) at \(20\,\mathrm{ms}\). 
+These are small descriptive differences.
 
-T2 shows a larger cost where forwarding supports the deciding majority. Mean median latency rises from \(2.41\) to \(4.08\,\mathrm{ms}\), from \(28.23\) to \(37.49\,\mathrm{ms}\), and from \(99.47\) to \(166.21\,\mathrm{ms}\) as per-link delay increases. Direct latency describes successful requests despite lower throughput and more election events.
+T2 shows a larger cost where forwarding supports the deciding majority. 
+Mean median latency rises from \(2.41\) in direct mode to \(4.08\,\mathrm{ms}\) with forwarding, from \(28.23\) to \(37.49\,\mathrm{ms}\), and from \(99.47\) to \(166.21\,\mathrm{ms}\) as per-link delay increases. 
+Direct latency describes successful requests despite lower throughput and more election events.
 
-T3 has no direct latency samples. Forwarding mean median latency is \(3.57\), \(35.81\), and \(147.77\,\mathrm{ms}\) at the three delays. T1 and T4 also have higher forwarding latency, but their direct latency summaries exclude zero-throughput runs. Those comparisons must therefore be read alongside availability and sample counts, rather than as latency measurements of equally available services.
+T3 has no direct latency samples for direct communication mode as it was unstable in such mode and thus has not produced any successful commits.
+Forwarding mean median latency observed in forwarding mode is \(3.57\), \(35.81\), and \(147.77\,\mathrm{ms}\) at the three delays measured. 
+T1 and T4 also have higher forwarding latency, but their direct latency summaries exclude zero-throughput runs. 
 
 \section{Discussion}
 
 \subsection{Interpretation and Answers to the Research Questions}
 
-For RQ1, all \(450\) forwarding trials satisfy the defined stable-progress heuristic, compared with \(309/450\) direct trials, under the tested \(500\,\mathrm{ms}\) heartbeat timeout. In T2, forwarding mean throughput is approximately \(53\%\), \(83\%\), and \(69\%\) higher at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively, with fewer recorded election events. In T3, forwarding produces successful client commits in all \(90\) trials, while direct communication produces none. These observations support H1 within the tested topologies and workload. The heuristic does not establish uninterrupted progress or liveness for arbitrary partial partitions.
+For RQ1, all \(450\) forwarding trials reached stable commit progress, compared with \(309/450\) direct trials, under the tested \(500\,\mathrm{ms}\) heartbeat timeout. 
+In T2, forwarding mean throughput is approximately \(53\%\), \(83\%\), and \(69\%\) higher at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively, with fewer recorded election events. 
+In T3, forwarding produces successful client commits in all \(90\) trials, while direct communication produces none. 
+These observations support H1 within the tested topologies and workload. 
 
-T3's injection-to-first-client-commit time includes replica restart and setup before workload submission. Its approximately \(57\)--\(59\) commits/s using injection-to-end timing should therefore be distinguished from approximately \(99.5\)--\(100\) commits/s during the client observation period. The results demonstrate progress after setup, without identifying protocol-only recovery time.
+While in topologies T0-T2 and T4 both communication modes reach stable commit progress, with point-to-point links only lower commit throughput is observed.
+This can be attributed to the fact that after introducing partial partitions, more elections are held and thus more time is spent on the leader election process.
+T3, the constrained-election scenario, differs because direct communication fails to restore commit progress within the observation period. 
+In this scenario, replicas have divergent logs, and Raft's voting rule requires a candidate's log to be at least as up to date as that of each replica granting its vote.
+Consequently, connectivity to a majority is insufficient if the reachable replicas reject the candidate because its log is outdated. 
+Under the tested partition, replicas with sufficiently up-to-date logs cannot obtain a majority of votes, while reachable candidates with older logs cannot secure the required votes.
+Multi-hop forwarding restores the communication paths needed for an eligible candidate to obtain a majority and resume commit progress.
 
-The T1 and T4 results require a narrower claim. Their zero-throughput direct runs are associated with the naturally elected leader and the fixed client host. Forwarding restores end-to-end access to the leader, but a retained quorum means zero client throughput cannot by itself establish consensus failure. A control client placed on a host with direct access to the leader would help separate these effects.
-
-For RQ2, T0 shows small absolute differences in mean median latency, while T2 shows larger increases when forwarded paths support quorum replication. This is consistent with H2 and an availability/latency trade-off under the tested partial partitions. Successful-request latency excludes failures and must be interpreted together with client failure rate and the number of contributing runs, especially in T1 and T4 where direct-mode samples exclude zero-throughput trials.
+For RQ2, T0 shows small absolute differences in mean median latency, while T2 shows larger increases when forwarded paths support quorum replication. 
+This is consistent with H2 and an availability/latency trade-off under the tested partial partitions. 
+Successful-request latency excludes failures and must be interpreted together with client failure rate and the number of contributing runs, especially in T1 and T4 where direct-mode samples exclude zero-throughput trials.
 
 The observations are consistent with earlier proposals to mask partial partitions through network detours~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}.
 
