@@ -90,7 +90,7 @@ Raft assumes direct point-to-point communication and does not forward messages t
 A leader that loses two direct follower links may therefore stall even though those followers remain reachable at the network layer.
 A notable real-world example is the Cloudflare outage in 2020, where a partial network failure disrupted etcd's Raft cluster~\cite{cloudflare2020byzantine}.
 
-We therefore test whether forwarding messages through surviving links restores Raft's progress, and measure its latency cost.
+We therefore test whether forwarding messages through surviving links restores Raft's progress and measure its latency cost.
 
 \subsection{Theory and Related Work}
 
@@ -252,9 +252,9 @@ $T0$ and $T1$ are control topologies mostly used to test our experimental setup 
 Primary measured variables are commit throughput and recovery time.
 For RQ2, we take the median and 95th percentile client commit latency per run and contrast cells where a forwarded follower is needed for the deciding majority (notably T2) with direct-quorum controls (T0 and T1).
 When only forwarding is live (T3), latency is reported for that mode alone.
-With $n=30$ per condition we report means and sample standard deviations rather than formal hypothesis tests. Latency summaries exclude runs without successful observe requests; their sample sizes are reported separately.
+With $n=30$ per condition we report means and sample standard deviations rather than formal hypothesis tests. Latency summaries exclude runs without successful observe requests their sample sizes are reported separately.
 Throughput divides successful client commits by the recorded interval from injection to observation end. This interval includes post-injection validation and, for T3, replica restart and setup before the client starts. We additionally report T3 throughput using the interval from client start to observation end.
-A validated trial means that setup, warm-up where applicable, connectivity checks, and artifact collection completed; it does not require post-injection progress. The stable-progress indicator requires a successful client commit, a recorded recovery, and an election-event count no greater than $\max(5,\lfloor N_{\mathrm{ok}}/10\rfloor+3)$. It is a descriptive heuristic, not a proof of consensus liveness.
+A validated trial means that setup, warmup, connectivity checks, and artifact collection completed. The stable-progress indicator requires a successful client commit, a recorded recovery, and an election-event count no greater than $\max(5,\lfloor N_{\mathrm{ok}}/10\rfloor+3)$. It is a descriptive heuristic, not a proof of consensus liveness.
 Validity is supported by paired conditions, fixed binaries and seeds, post-inject connectivity checks, host-load monitoring, and exclusion of invalid warm-ups.
 
 \subsection{Use of AI Tools}
@@ -287,7 +287,7 @@ Figure~\ref{fig:rq1-thr} shows client-observed throughput across the complete de
 
 T0 sustains progress in all \(180\) runs, with throughput between \(99.75\) and \(100.00\) commits/s across modes and delays. No election events were recorded after injection. Mean injection-to-first-client-commit times range from \(4.43\) to \(14.53\,\mathrm{ms}\). No warm-up election events were recorded in any T0/T1/T2/T4 trial.
 
-In T1, forwarding maintains stable progress in all \(90\) runs and averages \(99.70\)--\(99.79\) commits/s. Direct mode has zero successful observe requests in \(2/30\), \(4/30\), and \(7/30\) runs at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively. Its corresponding mean throughputs are \(93.20\), \(86.53\), and \(76.50\) commits/s. All \(13\) zero-throughput runs have initial leader E, while the client remains on C; the C--E link is cut. In inspected event logs, the leader retains a quorum while the client cannot reach it. These observations establish an end-to-end availability benefit, without establishing a consensus liveness failure.
+In T1, forwarding maintains stable progress in all \(90\) runs and averages \(99.70\)--\(99.79\) commits/s. Direct mode has zero successful observe requests in \(2/30\), \(4/30\), and \(7/30\) runs at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively. Its corresponding mean throughputs are \(93.20\), \(86.53\), and \(76.50\) commits/s. All \(13\) zero-throughput runs have initial leader E, while the client remains on C. The C--E link is cut. In inspected event logs, the leader retains a quorum while the client cannot reach it. These observations establish an end-to-end availability benefit, without establishing a consensus liveness failure.
 
 T2 provides the clearest throughput contrast where the initial leader loses a direct quorum.
 At \(0.5\,\mathrm{ms}\), direct throughput is \(63.34\pm11.99\) commits/s and forwarding reaches \(96.93\pm1.82\).
@@ -308,16 +308,16 @@ Mean injection-to-first-client-commit times are \(20.44\pm0.05\), \(20.87\pm0.08
 \end{figure}
 
 In T4, forwarding averages \(99.75\)--\(99.94\) commits/s and maintains stable progress in all \(90\) runs.
-Direct throughput averages \(69.99\), \(63.31\), and \(76.51\) commits/s at \(0.5\), \(5\), and \(20\,\mathrm{ms}\). There are \(9/30\), \(11/30\), and \(7/30\) zero-throughput runs, respectively; all \(27\) have initial leader C with the client on B and the B--C link cut.
-The three-node majority still has size two, so C can retain a quorum with A. As in T1, client reachability must be distinguished from consensus progress. Direct mode satisfies the stable-progress heuristic in \(63/90\) runs; forwarding also restores the client-to-leader path.
+Direct throughput averages \(69.99\), \(63.31\), and \(76.51\) commits/s at \(0.5\), \(5\), and \(20\,\mathrm{ms}\). There are \(9/30\), \(11/30\), and \(7/30\) zero-throughput runs, respectively. All \(27\) have initial leader C with the client on B and the B--C link cut.
+The three-node majority still has size two, so C can retain a quorum with A. As in T1, client reachability must be distinguished from consensus progress. Direct mode satisfies the stable-progress heuristic in \(63/90\) runs.
 
 \subsection{RQ2: Commit latency}
 
 \input{latency-table.tex}
 
-In T0, forwarding changes mean median latency from \(2.42\) to \(2.53\,\mathrm{ms}\) at \(0.5\,\mathrm{ms}\) delay, from \(19.27\) to \(19.60\,\mathrm{ms}\) at \(5\,\mathrm{ms}\), and from \(83.16\) to \(84.66\,\mathrm{ms}\) at \(20\,\mathrm{ms}\). These are small descriptive differences; no significance test is applied.
+In T0, forwarding changes mean median latency from \(2.42\) to \(2.53\,\mathrm{ms}\) at \(0.5\,\mathrm{ms}\) delay, from \(19.27\) to \(19.60\,\mathrm{ms}\) at \(5\,\mathrm{ms}\), and from \(83.16\) to \(84.66\,\mathrm{ms}\) at \(20\,\mathrm{ms}\). These are small descriptive differences.
 
-T2 shows a larger cost where forwarding supports the deciding majority. Mean median latency rises from \(2.41\) to \(4.08\,\mathrm{ms}\), from \(28.23\) to \(37.49\,\mathrm{ms}\), and from \(99.47\) to \(166.21\,\mathrm{ms}\) as per-link delay increases. Direct latency describes successful requests despite lower throughput and more election events; it does not include failed requests.
+T2 shows a larger cost where forwarding supports the deciding majority. Mean median latency rises from \(2.41\) to \(4.08\,\mathrm{ms}\), from \(28.23\) to \(37.49\,\mathrm{ms}\), and from \(99.47\) to \(166.21\,\mathrm{ms}\) as per-link delay increases. Direct latency describes successful requests despite lower throughput and more election events.
 
 T3 has no direct latency samples. Forwarding mean median latency is \(3.57\), \(35.81\), and \(147.77\,\mathrm{ms}\) at the three delays. T1 and T4 also have higher forwarding latency, but their direct latency summaries exclude zero-throughput runs. Those comparisons must therefore be read alongside availability and sample counts, rather than as latency measurements of equally available services.
 
@@ -325,13 +325,13 @@ T3 has no direct latency samples. Forwarding mean median latency is \(3.57\), \(
 
 \subsection{Interpretation and Answers to the Research Questions}
 
-For RQ1, all \(450\) forwarding trials satisfy the defined stable-progress heuristic, compared with \(309/450\) direct trials, under the tested \(500\,\mathrm{ms}\) heartbeat timeout. In T2, forwarding mean throughput is approximately \(53\%\), \(83\%\), and \(69\%\) higher at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively, with fewer recorded election events. In T3, forwarding produces successful client commits in all \(90\) trials, while direct communication produces none. These observations support H1 within the tested topologies and workload; the heuristic does not establish uninterrupted progress or liveness for arbitrary partial partitions.
+For RQ1, all \(450\) forwarding trials satisfy the defined stable-progress heuristic, compared with \(309/450\) direct trials, under the tested \(500\,\mathrm{ms}\) heartbeat timeout. In T2, forwarding mean throughput is approximately \(53\%\), \(83\%\), and \(69\%\) higher at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively, with fewer recorded election events. In T3, forwarding produces successful client commits in all \(90\) trials, while direct communication produces none. These observations support H1 within the tested topologies and workload. The heuristic does not establish uninterrupted progress or liveness for arbitrary partial partitions.
 
 T3's injection-to-first-client-commit time includes replica restart and setup before workload submission. Its approximately \(57\)--\(59\) commits/s using injection-to-end timing should therefore be distinguished from approximately \(99.5\)--\(100\) commits/s during the client observation period. The results demonstrate progress after setup, without identifying protocol-only recovery time.
 
 The T1 and T4 results require a narrower claim. Their zero-throughput direct runs are associated with the naturally elected leader and the fixed client host. Forwarding restores end-to-end access to the leader, but a retained quorum means zero client throughput cannot by itself establish consensus failure. A control client placed on a host with direct access to the leader would help separate these effects.
 
-For RQ2, T0 shows small absolute differences in mean median latency, while T2 shows larger increases when forwarded paths support quorum replication. This is consistent with H2 and an availability/latency trade-off under the tested partial partitions. These comparisons are descriptive; no statistical significance test was applied. Successful-request latency excludes failures and must be interpreted together with client failure rate and the number of contributing runs, especially in T1 and T4 where direct-mode samples exclude zero-throughput trials.
+For RQ2, T0 shows small absolute differences in mean median latency, while T2 shows larger increases when forwarded paths support quorum replication. This is consistent with H2 and an availability/latency trade-off under the tested partial partitions. Successful-request latency excludes failures and must be interpreted together with client failure rate and the number of contributing runs, especially in T1 and T4 where direct-mode samples exclude zero-throughput trials.
 
 The observations are consistent with earlier proposals to mask partial partitions through network detours~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}.
 
@@ -339,8 +339,8 @@ The observations are consistent with earlier proposals to mask partial partition
 We used fixed software versions, predefined seeds, and a fixed heartbeat timeout, with the same EC2 instance type, network configuration, and operating system across workers.
 Hardware and scheduling variability could still affect the measurements. We repeated each condition \(30\) times and report the variation between runs.
 
-Each trial hosts all replicas and its client on a single EC2 instance; the sixteen-instance fleet runs independent trials in parallel.
-The emulated path delays are static; production delays vary with traffic and congestion.
+Each trial hosts all replicas and its client on a single EC2 instance. The sixteen instances run independent trials in parallel.
+The emulated path delays are static while production delays can vary depending on traffic and congestion.
 
 We did not test replicas distributed across machines or geographical regions.
 
@@ -355,7 +355,7 @@ Operators would need to test this trade-off with their own workloads and network
 If these availability gains carry over to deployment, dependent services could face fewer interruptions, although added commit latency could slow operations that wait for consensus.
 
 The campaign used sixteen AWS EC2 instances. We did not quantify its energy consumption or emissions, so we cannot assess its environmental impact from the trial results alone.
-Small pilot campaigns and prompt shutdown of idle instances could reduce experimental resource use; restricting detours to failed direct paths could limit extra network traffic in deployment.
+Small pilot campaigns and shutdown of idle instances could reduce experimental resource use. In addition, restricting detours to failed direct paths could limit extra network traffic in deployment.
 
 \subsection{Implications and Future Work}
 
