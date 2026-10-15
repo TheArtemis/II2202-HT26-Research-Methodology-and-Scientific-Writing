@@ -143,7 +143,7 @@ We answer both research questions through a controlled quantitative experiment w
 The network is emulated using Mininet and is populated by required number of Raft nodes and links for each tested topology.
 In order to answer both research questions, we need to establish the behavior of Raft cluster under the same partial network topologies using default point-to-point links only.
 Thus, we have to repeat each experiment with both direct communication mode (using point-to-point links only) and forwarding mode (shortest route to the next available alternative).
-We decided to use some of the partial network topologies from Omnipaxos paper ~\cite{ng2023omnipaxos} as they expose scenarios under which leader can still reach majority quorum via intermediate nodes.
+We decided to use some of the partial network topologies from Omnipaxos paper~\cite{ng2023omnipaxos} as they expose scenarios under which leader can still reach majority quorum via intermediate nodes.
 In addition, same experiments are repeated with different artificial per-link delays.
 Other parameters and conditions such as computing resources, heartbeat timeout, client workload rate, payload size and observation periods are kept constant.
 This design aims to isolate the effect of multi-hop communication within each topology and delay.
@@ -154,7 +154,7 @@ After such period, required links are cut to match the topology under test.
 Afterwards, the cluster is observed for $30$ seconds and results are collected.
 However, we acknowledge that there might be some variability between the identical runs due to network scheduling, runtime warmup unpredictability and other factors.
 To minimize the impact of such variability in our results, we repeat each experiment run $30$ times.
-This is known systems benchmarking strategy that uses repetitions allowing researches to be aware of measurement uncertainty~\cite{kalibera2013rigorous}.
+This is known systems benchmarking strategy that uses repetitions allowing researchers to be aware of measurement uncertainty~\cite{kalibera2013rigorous}.
 
 The design is a comparison of communication mode (\(\mathrm{direct}\) vs.\ \(\mathrm{forwarding}\)) across five predefined topologies (T0--T4) and selected per-link delays.
 T0 is a healthy baseline and T1 a control in which the leader retains a direct majority after a non-critical cut. T2--T4 instantiate quorum-loss, constrained election, and chained connectivity.
@@ -317,14 +317,14 @@ At \(5\,\mathrm{ms}\), the values are \(52.27\pm26.43\) and \(95.78\pm2.36\).
 At \(20\,\mathrm{ms}\), they are \(55.88\pm22.28\) and \(94.46\pm1.33\).
 Forwarding satisfies the stable progress in all \(90\) runs, compared with \(79/90\) for direct mode. 
 Mean recorded election counts are \(4.10\), \(5.83\), and \(7.50\) with forwarding, versus \(19.97\), \(74.00\), and \(52.33\) with direct communication.
-Mean time to first succesful commit are \(20.70\), \(147.88\), and \(261.03\,\mathrm{ms}\) with forwarding, compared with \(940.59\), \(426.60\), and \(396.05\,\mathrm{ms}\) with direct communication.
+Mean time to first successful commit are \(20.70\), \(147.88\), and \(261.03\,\mathrm{ms}\) with forwarding, compared with \(940.59\), \(426.60\), and \(396.05\,\mathrm{ms}\) with direct communication.
 
 In T3, direct communication produces no successful client commits in any of the \(90\) runs and has a \(100\%\) client failure rate.
 Forwarding makes stable progress in all \(90\) runs. 
 Mean throughput using injection-to-end timing is \(59.48\pm0.06\), \(58.96\pm0.10\), and \(57.45\pm0.11\) commits/s at the three delays.
 These values include setup before the client starts. 
 From the start of the client requests, the corresponding mean throughputs are \(99.97\), \(99.86\), and \(99.48\) commits/s.
-Mean time to first succesful commit are \(20.44\pm0.05\), \(20.87\pm0.08\), and \(22.12\pm0.10\,\mathrm{s}\) (Figure~\ref{fig:t3-rec})
+Mean time to first successful commit are \(20.44\pm0.05\), \(20.87\pm0.08\), and \(22.12\pm0.10\,\mathrm{s}\) (Figure~\ref{fig:t3-rec}).
 The client itself starts approximately \(20.42\), \(20.81\), and \(21.95\,\mathrm{s}\) after injection. 
 These recovery measurements include replica restart, health checks, and leader probing and cannot be interpreted as election delay alone.
 
@@ -352,8 +352,8 @@ T2 shows a larger cost where forwarding supports the deciding majority.
 Mean median latency rises from \(2.41\) in direct mode to \(4.08\,\mathrm{ms}\) with forwarding, from \(28.23\) to \(37.49\,\mathrm{ms}\), and from \(99.47\) to \(166.21\,\mathrm{ms}\) as per-link delay increases. 
 Direct latency describes successful requests despite lower throughput and more election events.
 
-T3 has no direct latency samples for direct communication mode as it was unstable in such mode and thus has not produced any successful commits.
-Forwarding mean median latency observed in forwarding mode is \(3.57\), \(35.81\), and \(147.77\,\mathrm{ms}\) at the three delays measured. 
+T3 has no latency samples for direct communication mode as it was unstable in such mode and thus has not produced any successful commits.
+Mean median latency observed in forwarding mode is \(3.57\), \(35.81\), and \(147.77\,\mathrm{ms}\) at the three delays measured. 
 T1 and T4 also have higher forwarding latency, but their direct latency summaries exclude zero-throughput runs. 
 
 \section{Discussion}
