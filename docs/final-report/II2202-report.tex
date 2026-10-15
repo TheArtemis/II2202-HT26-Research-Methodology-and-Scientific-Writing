@@ -81,7 +81,7 @@ Partial network partitions can disrupt Raft even when nodes remain reachable thr
 
 Distributed databases, file systems, and cluster orchestration services rely on consensus to agree on a shared state.
 Raft is a leader-based consensus protocol --- the leader appends client entries and replicates them to followers with an entry considered to be committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}.
-To make progress leader must be able to reach a majority of followers.
+To make progress leader must be able to reach a majority of all replicas.
 Otherwise, the cluster is unable to make progress until new leader is elected.
 Safety is ensured under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
 
@@ -98,7 +98,7 @@ We therefore test whether forwarding messages through surviving links restores R
 Jensen et al.\ studied etcd's Raft under partial network partitions and observed election instability and delayed requests.
 They have suggested two possible solutions in the face of partial network topologies: the use of the \emph{PreVote} mechanism and network overlay routing~\cite[Sec.~5]{jensen2021raft}.
 PreVote mechanism is an additional safety check in Raft where a node checks whether it could still become a leader before initiating a real election.
-This prevents disrupting the cluster during partial partitions. 
+This prevents disrupting the cluster by preventing elections in which the candidate will fail to secure a majority quorum. 
 However, they claim that PreVote substantially increases the commit latency during partial network partitions~\cite[Sec.~5]{jensen2021raft}.
 They suggested that the overlay networks might be a better solution in terms of reduced commit latency during partial partitions~\cite[Secs.~4--5]{jensen2021raft}.
 However, they did not evaluate the overlay networks in a systematic way.
@@ -365,7 +365,7 @@ In T2, forwarding mean throughput is approximately \(53\%\), \(83\%\), and \(69\
 In T3, forwarding produces successful client commits in all \(90\) trials, while direct communication produces none. 
 These observations support H1 within the tested topologies and workload. 
 
-While in topologies T0-T2 and T4 both communication modes reach stable commit progress, with point-to-point links only lower commit throughput is observed.
+While in topologies T1-T2 and T4 remain stable only in forwarding mode, with direct mode producing lower commit throughput implying instability as the client is likely unable to reach a leader at request time.
 This can be attributed to the fact that after introducing partial partitions, more elections are held and thus more time is spent on the leader election process.
 T3, the constrained-election scenario, differs because direct communication fails to restore commit progress within the observation period. 
 In this scenario, replicas have divergent logs, and Raft's voting rule requires a candidate's log to be at least as up to date as that of each replica granting its vote.
