@@ -1,0 +1,60 @@
+---
+# Smoke qualify: ensure mininetd is up and harness can run smoke trials.
+- name: Qualify workers with smoke config
+  hosts: workers
+  become: true
+  gather_facts: false
+  vars:
+    experiments_dir: /opt/ii2202/experiments
+    smoke_config: configs/smoke.yaml
+  tasks:
+    - name: Check configure completed (harness + mininetd unit)
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ experiments_dir }}/bin/harness"
+        - /etc/systemd/system/mininetd.service
+      register: configure_artifacts
+
+    - name: Fail if configure did not finish
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+        fail_msg: >-
+          Missing {{ item.item }} — run `make configure GIT_SHA=…` successfully
+          before qualify (mininetd / harness were never installed).
+      loop: "{{ configure_artifacts.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Ensure mininetd is running
+      ansible.builtin.systemd:
+        name: mininetd
+        state: started
+        enabled: true
+        daemon_reload: true
+
+    - name: Wait for mininetd socket
+      ansible.builtin.wait_for:
+        path: /tmp/mininetd.sock
+        state: present
+        timeout: 60
+
+    - name: Dry-run smoke config
+      ansible.builtin.command:
+        cmd: ./bin/harness dry-run {{ smoke_config }}
+        chdir: "{{ experiments_dir }}"
+      become_user: root
+      changed_when: false
+
+    - name: Run smoke trials
+      ansible.builtin.command:
+        cmd: ./bin/harness run {{ smoke_config }}
+        chdir: "{{ experiments_dir }}"
+      become_user: root
+      register: smoke_run
+      changed_when: true
+
+    - name: Show smoke output
+      ansible.builtin.debug:
+        msg: "{{ smoke_run.stderr_lines | default([]) + smoke_run.stdout_lines | default([]) }}"

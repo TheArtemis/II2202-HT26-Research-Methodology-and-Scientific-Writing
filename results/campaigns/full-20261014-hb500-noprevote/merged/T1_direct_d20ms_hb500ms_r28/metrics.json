@@ -1,0 +1,223 @@
+{
+  "run_id": "T1_direct_d20ms_hb500ms_r28",
+  "topology": "T1",
+  "mode": "direct",
+  "delay": "20ms",
+  "heartbeat": "500ms",
+  "repetition": 28,
+  "seed": 20261744,
+  "trial_ok": true,
+  "commit_throughput_observe_eps": 0,
+  "commit_throughput_warmup_eps": 100.69964336885634,
+  "recovery_time_ns": null,
+  "recovery_time_ms": null,
+  "elections_observe": 1,
+  "term_changes_observe": 1,
+  "elections_warmup": 0,
+  "term_changes_warmup": 0,
+  "stable_progress": false,
+  "raft_commits_observe": 10,
+  "client_ok_observe": 0,
+  "client_fail_observe": 3797,
+  "client_ok_warmup": 3021,
+  "latency_count": 0,
+  "latency_median_ns": null,
+  "latency_p95_ns": null,
+  "latency_mean_ns": null,
+  "latency_median_ms": null,
+  "latency_p95_ms": null,
+  "throughput_series": [
+    {
+      "offset_s": 0,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 1,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 2,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 3,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 4,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 5,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 6,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 7,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 8,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 9,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 10,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 11,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 12,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 13,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 14,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 15,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 16,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 17,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 18,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 19,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 20,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 21,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 22,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 23,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 24,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 25,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 26,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 27,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 28,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 29,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 30,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 31,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 32,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 33,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 34,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 35,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 36,
+      "eps": 0,
+      "fail_eps": 100
+    },
+    {
+      "offset_s": 37,
+      "eps": 0,
+      "fail_eps": 97
+    }
+  ],
+  "host_load_max_1m": 0.61,
+  "host_load_mean_1m": 0.4207142857142854
+}

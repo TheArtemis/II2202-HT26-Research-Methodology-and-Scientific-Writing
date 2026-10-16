@@ -1,0 +1,26 @@
+run_id: T3_direct_d5ms_hb10ms_r01
+topology: T3
+mode: direct
+delay: 5ms
+heartbeat: 10ms
+repetition: 1
+seed: 20260945
+leader: C
+client_node: C
+peers:
+    A: 10.0.0.1
+    B: 10.0.0.2
+    C: 10.0.0.3
+    D: 10.0.0.4
+    E: 10.0.0.5
+workload:
+    rate: 100
+    payload_size: 64
+    apply_timeout: 2s
+    client_node: ""
+timing:
+    cluster_ready_timeout: 30s
+    settle: 1s
+    warmup: 10s
+    observe: 30s
+    teardown_pause: 1s

@@ -1,0 +1,31 @@
+run_id: T0_forwarding_d20ms_hb500ms_r09
+topology: T0
+mode: forwarding
+delay: 20ms
+heartbeat: 500ms
+repetition: 9
+seed: 20261171
+leader: C
+client_node: C
+peers:
+    A: 10.0.0.1
+    B: 10.0.0.2
+    C: 10.0.0.3
+    D: 10.0.0.4
+    E: 10.0.0.5
+workload:
+    rate: 100
+    payload_size: 64
+    apply_timeout: 2s
+    client_node: ""
+timing:
+    cluster_ready_timeout: 1m0s
+    settle: 1s
+    warmup: 30s
+    observe: 30s
+    teardown_pause: 1s
+raft:
+    raft_port: 7000
+    api_port: 7001
+    seed_t3: true
+    pre_vote_disabled: true

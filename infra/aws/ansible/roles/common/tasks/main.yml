@@ -1,0 +1,42 @@
+---
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Install common packages
+  ansible.builtin.apt:
+    name: "{{ packages }}"
+    state: present
+
+- name: Ensure experiment group exists
+  ansible.builtin.group:
+    name: "{{ experiment_user }}"
+    state: present
+
+- name: Ensure experiment user exists
+  ansible.builtin.user:
+    name: "{{ experiment_user }}"
+    group: "{{ experiment_user }}"
+    home: "{{ experiment_home }}"
+    shell: /bin/bash
+    create_home: true
+    system: false
+
+- name: Ensure experiment root directory
+  ansible.builtin.file:
+    path: "{{ experiment_root }}"
+    state: directory
+    owner: "{{ experiment_user }}"
+    group: "{{ experiment_user }}"
+    mode: "0755"
+
+- name: Allow experiment user passwordless sudo for mininet helpers
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/experiment
+    content: |
+      {{ experiment_user }} ALL=(root) NOPASSWD: /usr/bin/mn, /usr/bin/ovs-vsctl, /usr/bin/ovs-ofctl, /bin/systemctl
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s

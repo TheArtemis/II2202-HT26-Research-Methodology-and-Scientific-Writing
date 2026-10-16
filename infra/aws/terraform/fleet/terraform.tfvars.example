@@ -1,0 +1,8 @@
+aws_region         = "eu-north-1"
+campaign_id        = "full-YYYYMMDD"
+ssh_cidr           = "YOUR.PUBLIC.IP.ADDR/32"
+ssh_public_key     = "ssh-ed25519 AAAA... comment"
+# results_bucket_name = ""   # default: ii2202-experiments-<account_id>
+# worker_count        = 8
+# instance_type       = "c5a.large"
+# root_volume_gb      = 40

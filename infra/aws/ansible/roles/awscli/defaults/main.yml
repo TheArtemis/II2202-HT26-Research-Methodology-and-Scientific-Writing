@@ -1,0 +1,5 @@
+---
+awscli_install_dir: /usr/local/aws-cli
+awscli_bin: /usr/local/bin/aws
+awscli_zip: /tmp/awscliv2.zip
+awscli_url: "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"

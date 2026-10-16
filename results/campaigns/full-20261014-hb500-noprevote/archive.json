@@ -1,0 +1,23 @@
+{
+  "campaign_id": "full-20261014-hb500-noprevote",
+  "source": "s3://ii2202-experiments-022741687779/campaigns/full-20261014-hb500-noprevote/",
+  "source_commit": "a2a73a0bff3de622a92c5eb397b4374c3eefe190",
+  "trials": 900,
+  "workers": 16,
+  "heartbeat": "500ms",
+  "pre_vote_disabled": true,
+  "included": [
+    "campaign configuration and fleet metadata",
+    "merged CSV and JSONL datasets",
+    "trial metrics, status, topology metadata, and timelines",
+    "worker build metadata",
+    "raw client requests, Raft events, and host load in merged/"
+  ],
+  "excluded": [
+    "duplicate workers/ directory",
+    "derived client_enriched.jsonl files",
+    "verbose .log files"
+  ],
+  "selected_file_count": 9564,
+  "selected_bytes": 2780127496
+}

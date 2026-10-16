@@ -1,0 +1,16 @@
+{
+  "run_id": "T4_direct_d20ms_hb500ms_r25",
+  "ok": true,
+  "started_at": "2026-10-14T12:18:30.801705643Z",
+  "finished_at": "2026-10-14T12:19:38.989308742Z",
+  "inject_at": "2026-10-14T12:19:02.323648999Z",
+  "inject_at_ns": 1791980342323648999,
+  "warmup_ok_commits": 2991,
+  "leader": "A",
+  "seed": 20261672,
+  "topology": "T4",
+  "mode": "direct",
+  "delay": "20ms",
+  "heartbeat": "500ms",
+  "repetition": 25
+}

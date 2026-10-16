@@ -1,0 +1,18 @@
+# T3 — Constrained election (full mesh; C isolated after inject; A--B,A--D,A--E live)
+# Overlay reconnects {A,B,D,E}; C stays unreachable (no surviving path).
+name: T3
+nodes: [A, B, C, D, E]
+identity_cidr: 10.0.0.0/24
+initial_leader: C
+links:
+  - {endpoints: [A, B], failed: false}
+  - {endpoints: [A, C], failed: true}
+  - {endpoints: [A, D], failed: false}
+  - {endpoints: [A, E], failed: false}
+  - {endpoints: [B, C], failed: true}
+  - {endpoints: [B, D], failed: true}
+  - {endpoints: [B, E], failed: true}
+  - {endpoints: [C, D], failed: true}
+  - {endpoints: [C, E], failed: true}
+  - {endpoints: [D, E], failed: true}
+forwarding_routes: []

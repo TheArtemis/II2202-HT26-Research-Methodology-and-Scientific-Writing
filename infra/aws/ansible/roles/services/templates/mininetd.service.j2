@@ -1,0 +1,20 @@
+[Unit]
+Description=Mininet JSON-RPC daemon (mininetd)
+After=network-online.target openvswitch-switch.service
+Wants=network-online.target
+Requires=openvswitch-switch.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory={{ experiments_dir }}
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 {{ mininetd_script }} --socket {{ mininetd_socket }}
+Restart=on-failure
+RestartSec=3
+# Mininet needs broad privileges for namespaces / OVS.
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

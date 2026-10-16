@@ -1,0 +1,16 @@
+{
+  "run_id": "T0_forwarding_d500us_hb500ms_r02",
+  "ok": true,
+  "started_at": "2026-10-14T12:51:56.319413388Z",
+  "finished_at": "2026-10-14T12:53:00.903175627Z",
+  "inject_at": "2026-10-14T12:52:28.448979735Z",
+  "inject_at_ns": 1791982348448979735,
+  "warmup_ok_commits": 2999,
+  "leader": "B",
+  "seed": 20260959,
+  "topology": "T0",
+  "mode": "forwarding",
+  "delay": "500µs",
+  "heartbeat": "500ms",
+  "repetition": 2
+}

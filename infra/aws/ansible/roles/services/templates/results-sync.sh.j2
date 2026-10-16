@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Sync raw worker shard to S3. Never merges — laptop owns merge/summarize.
+set -euo pipefail
+
+: "${RESULTS_DIR:=/opt/ii2202/experiments/results/full}"
+: "${RESULTS_BUCKET:?RESULTS_BUCKET required}"
+: "${CAMPAIGN_ID:?CAMPAIGN_ID required}"
+: "${WORKER_ID:?WORKER_ID required}"
+
+PREFIX="${S3_PREFIX:-campaigns/${CAMPAIGN_ID}/}"
+# Normalize trailing slash
+PREFIX="${PREFIX%/}/"
+DEST="s3://${RESULTS_BUCKET}/${PREFIX}workers/${WORKER_ID}/"
+
+mkdir -p "${RESULTS_DIR}"
+
+# Raw shard only: run dirs, manifest, machine.json, complete.json — no merged dataset.
+aws s3 sync "${RESULTS_DIR}/" "${DEST}" \
+  --exclude "dataset.jsonl" \
+  --exclude "dataset.csv" \
+  --exclude "validation-report.json" \
+  --exclude "*.tmp" \
+  --exclude ".git/*"
+
+echo "results-sync: ${RESULTS_DIR} → ${DEST}"

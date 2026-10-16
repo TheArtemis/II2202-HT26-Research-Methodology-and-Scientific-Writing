@@ -1,0 +1,8 @@
+---
+experiment_user: experiment
+experiments_dir: /opt/ii2202/experiments
+results_dir: /opt/ii2202/experiments/results/full
+mininetd_socket: /tmp/mininetd.sock
+mininetd_script: /opt/ii2202/experiments/netinfra/mininetd/server.py
+worker_env_file: /etc/experiment/worker.env
+sync_interval_sec: 60

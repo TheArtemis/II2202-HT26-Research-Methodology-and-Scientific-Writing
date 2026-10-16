@@ -1,0 +1,19 @@
+{
+    "built_at": "2026-10-14T11:51:34Z",
+    "campaign_id": "full-20261014-hb500-noprevote",
+    "checksums": {
+        "harness": "42701ecb3e1e48a9400219da821bde69f544585ce773c15ba80a197134462cc8",
+        "netctl": "8b5ba7b0b955693faf0b7eccd2fab0da10aeb0f8796ff42d6ef7a10a2c45dfd8",
+        "raftclient": "77dc135b39004ff27dc2f52939c8ba5b9a815dcd6e9065dadfb5e56aed9299f2",
+        "raftd": "638a396b97e87b46c1491f76975b16bccf64336198b143c4147840b7023eb434"
+    },
+    "from_trial": 342,
+    "git_sha": "a2a73a0bff3de622a92c5eb397b4374c3eefe190",
+    "go_version": "go version go1.22.12 linux/amd64",
+    "hostname": "ip-172-31-21-29",
+    "instance_id": "",
+    "limit_trials": 57,
+    "mininet_commit": "d7f399d7a1200b602bd6a95ae88bae1009664d4a",
+    "repo_url": "https://github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing.git",
+    "worker_id": "worker-06"
+}

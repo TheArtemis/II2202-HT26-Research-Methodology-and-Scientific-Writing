@@ -1,0 +1,13 @@
+---
+experiment_user: experiment
+experiment_root: /opt/ii2202
+experiments_dir: /opt/ii2202/experiments
+results_dir: /opt/ii2202/experiments/results/full
+repo_url: "https://github.com/TheArtemis/II2202-HT26-Research-Methodology-and-Scientific-Writing.git"
+git_sha: ""
+machine_json_path: /opt/ii2202/experiments/results/full/machine.json
+build_binaries:
+  - raftd
+  - raftclient
+  - harness
+  - netctl

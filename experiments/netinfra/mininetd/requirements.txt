@@ -1,0 +1,9 @@
+# Mininet itself must be installed as a system package (apt/Mininet VM image).
+# Pin notes for operators; do not pip-install a conflicting Mininet wheel.
+#
+# Target: Mininet 2.3.0
+#   https://github.com/mininet/mininet/releases/tag/2.3.0
+#   commit d7f399d7a1200b602bd6a95ae88bae1009664d4a
+#
+# This daemon uses only the Python standard library plus the system `mininet`
+# package. No extra pip dependencies are required.

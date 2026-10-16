@@ -1,0 +1,35 @@
+---
+# roles/common — base packages and experiment user
+packages:
+  - build-essential
+  - ca-certificates
+  - curl
+  - git
+  - gnupg
+  - jq
+  - python3
+  - python3-pip
+  - python3-venv
+  - unzip
+  - wget
+  - iproute2
+  - iputils-ping
+  - net-tools
+  - traceroute
+  - tcpdump
+  - bridge-utils
+  - openvswitch-switch
+  - cgroup-tools
+  - socat
+  - rsync
+  - make
+  - pkg-config
+  - libpcap-dev
+  - help2man
+  - autoconf
+  - automake
+  - libtool
+
+experiment_user: experiment
+experiment_home: /home/experiment
+experiment_root: /opt/ii2202

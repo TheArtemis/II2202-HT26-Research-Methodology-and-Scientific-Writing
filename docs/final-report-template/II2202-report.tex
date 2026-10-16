@@ -1,0 +1,190 @@
+\documentclass[11pt,a4paper]{article}
+
+% Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
+% are chosen to make page density close to the corresponding Word template.
+\usepackage[margin=1in,headheight=15pt,headsep=24pt,footskip=28pt]{geometry}
+\usepackage[default]{sourcesanspro}
+\usepackage{setspace}
+\usepackage{xcolor}
+\usepackage{mdframed}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\definecolor{guidancetext}{HTML}{595959}
+\definecolor{guidancebg}{HTML}{F1F3F5}
+
+\setstretch{1}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+\raggedbottom
+
+\titleformat{\section}
+  {\fontsize{14}{16.5}\selectfont\bfseries}w
+  {\thesection}{1em}{}
+\titlespacing*{\section}{0pt}{0pt}{4pt}
+\titleformat{\subsection}
+  {\fontsize{13}{15.5}\selectfont\bfseries}
+  {\thesubsection}{1em}{}
+\titlespacing*{\subsection}{0pt}{0pt}{0pt}
+
+\newcommand{\unnumberedheading}[1]{%
+  \par\vspace{2pt}{\fontsize{14}{16.5}\selectfont\bfseries #1\par}\vspace{6pt}%
+}
+\newcommand{\reporttitle}[1]{%
+  {\fontsize{16}{19}\selectfont\bfseries #1\par}\vspace{12pt}%
+}
+\newcommand{\guidance}[1]{%
+  {\setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape #1\par}%
+  \vspace{-6pt}%
+}
+\newenvironment{guidancebox}
+  {\begin{mdframed}[backgroundcolor=guidancebg,linecolor=guidancebg,linewidth=0pt,
+    innerleftmargin=3pt,innerrightmargin=3pt,innertopmargin=2pt,innerbottommargin=2pt,
+    skipabove=6pt,skipbelow=10pt]
+   \setstretch{1.0}\fontsize{9}{11}\selectfont\color{guidancetext}\itshape\setlength{\parskip}{6pt}}
+  {\end{mdframed}}
+\newcommand{\placeholder}[1]{#1\par}
+
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period X}
+\fancyhead[C]{\fontsize{9}{11}\selectfont Final report template}
+\fancyhead[R]{\fontsize{9}{11}\selectfont Insert date}
+\fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
+
+\begin{document}
+\reporttitle{[Project title]}
+\unnumberedheading{Authors}
+Student 1 <student1@kth.se>\par
+Student 2 <student2@kth.se>\par
+\vspace{2pt}
+
+\begin{guidancebox}
+\textbf{TEMPLATE GUIDANCE - DELETE BEFORE SUBMISSION.} This is the graded report. Keep the structure aligned with the earlier submissions: revise Section 1 of the proposal/research plan, revise Section 2 to describe what was actually done, and add the Results, Discussion, and Conclusion. Primary grading rubric alignment: Section 1 -> Criterion 1; Section 2 -> Criterion 2; Sections 3-5 -> Criterion 3; scientific writing and argumentation throughout -> Criterion 4; the revision process -> Criterion 5; ethics/societal/sustainability -> Criterion 6. The oral examination and opposition are assessed separately.\par
+This cover page should include the title, authors’ names, and an abstract (which should be longer than it fits on this page). The main report should be at most 10 pages long, excluding this cover page, the reference list, and potential appendices. The font size should not be smaller than 11. No table of contents is needed since the report is concise and has a predefined structure. Edit the document heading to fit your report.\par
+\end{guidancebox}
+
+\unnumberedheading{Abstract}
+
+\guidance{Write a concise, self-contained summary of the completed study. Include the broader context, the specific problem/question, the method, the most important results (quantitatively when meaningful), the main conclusion, and why the finding matters. Do not introduce claims that are not supported in the report.}
+\placeholder{[Write the abstract here.]}
+
+\newpage
+
+\section{Introduction}
+
+\guidance{The Introduction should establish the scientific problem and lead logically to the research questions. Reuse and improve the mature material from the research plan but update it to match the study that was actually completed.}
+
+\subsection{Background and Rationale}
+
+\guidance{Introduce the context, explain why the problem matters, and narrow the discussion toward the specific research need. Be selective: include information related to the scientific argument rather than a broad tutorial on the overall topic. All the statements that are treated as established facts must be supported by citations.}
+
+\placeholder{[Background and rationale]}
+
+\subsection{Theory and Related Work}
+
+\guidance{Synthesize the theory and prior research needed to understand and evaluate the project, but be concise, as this is not meant to be a textbook on its own. Compare relevant approaches and findings, identify the research gap your work addresses (without revealing how you will address it), and make clear how the existing literature informed the research design. Cite every factual claim that requires a source.}
+
+\placeholder{[Theory and related work]}
+
+\subsection{Research Problem, Aim, and Research Questions}
+
+\guidance{State the final research problem, the project’s aim, and the research question precisely. Include hypotheses only when appropriate. The questions stated here must match the evidence, analysis, and conclusions presented later in the report. It is okay to narrow the scope of the project at this stage if you cannot answer all the research questions that you initially planned to.}
+
+\placeholder{[Research problem, aim, research questions, and optional hypotheses]}
+
+\section{Research Method}
+
+\guidance{Describe what was actually done, not what was originally planned. The Method section should allow the reader to judge whether the investigation can reliably answer the research questions and, where feasible, reproduce or independently scrutinize the study.}
+
+\subsection{Research Design and Methodological Rationale}
+
+\guidance{Identify and justify the research design used in the completed study. Explain why it was suitable for the questions and discuss important alternatives (and why you did not choose them), assumptions, or constraints. If the method changed from the research plan, describe the final design here and motivate why you decided to make these changes.}
+
+\placeholder{[Research design and rationale]}
+
+\subsection{Data, Materials, Participants, or Other Sources}
+
+\guidance{Describe the evidence and resources actually used. Explain selection or sampling, relevant quantities (e.g., independent and dependent variables), inclusion/exclusion rules, and important characteristics that affect interpretation. For human participants, include the methodological details needed to understand recruitment and the sample; procedural ethical safeguards can also be described here. Feel free to rename the subsection title to align it with the content of your report and project.}
+
+\placeholder{[Data/materials/participants/sources and selection]}
+
+\subsection{Work Procedure and Data Collection}
+
+\guidance{Describe how the study was carried out. Provide the experimental conditions, system configurations, interview/observation procedures, variables, controls, repetitions, or other details required to understand how the evidence was produced. Report deviations from the plan when they materially affect interpretation. If the exact procedures are very extensive, then you provide a concise summary (sufficient for understanding the results) and put the remaining content in an appendix (to support reproducibility).}
+
+\placeholder{[Procedure and data collection]}
+
+\subsection{Data Analysis and Quality Assurance}
+
+\guidance{Explain how the raw evidence was transformed into the reported results. Define metrics, statistical tests, qualitative coding methods, comparisons, thresholds, uncertainty estimates, or other analysis procedures. The reader should be able to see how each analysis contributes to answering a research question. Explain the measures taken to support validity, reliability, reduce bias, characterize uncertainty, and enable reproducibility. Include controls, repetitions, sensitivity analyses, triangulation, random seeds, software/data versions, and data/code availability when relevant.}
+
+\placeholder{[Data analysis and quality assurance]}
+
+\subsection{Use of AI Tools}
+
+\guidance{Describe the AI tools actually used while conducting and writing up the project, the purpose of each use, and how outputs were verified for correctness. Distinguish, where relevant, between orientation/literature discovery, language feedback, coding, data analysis, or other uses. Explain how the group ensured that the scientific ideas, decisions, interpretations, and submitted intellectual content remained its own responsibility. If no AI tools were used, state this. Check the current course rules and include any required prompt log in an appendix.}
+
+\placeholder{[Use of AI tools]}
+
+\section{Results}
+
+\guidance{Present the findings produced by the analyses in Section 2.4. Organize the section around the research questions or another clear scientific logic, and introduce subsections as you see fit. Use tables and figures when they improve understanding, refer to and explain them in the text, and report relevant uncertainty. Focus here on what was observed; reserve broader interpretation, explanations, implications, and comparison with previous work for the section called Discussion. Many projects generate many more results than fit into the report, so focus on those that help you answer your research questions with certainty, but be careful not to “cherry-pick” results that seem to support your hypothesis if there is other evidence that would lead to opposite conclusions. You will not be graded based on whether your hypotheses are confirmed or not, but on how scientifically reliable your conclusions are.}
+
+\placeholder{[Results, with appropriate subsections, figures, and tables]}
+
+\section{Discussion}
+
+\guidance{Interpret the results and explain what they mean in relation to the research questions, prior work, and the limitations of the study. This is where the strength and boundaries of the conclusions should become clear.}
+
+\subsection{Interpretation and Answers to the Research Questions}
+
+\guidance{Answer each research question using the evidence presented in the section Results. Explain important patterns, unexpected findings, trade-offs, and alternative explanations. Compare with relevant previous work where appropriate. Avoid claiming more than the data support.}
+
+\placeholder{[Interpretation and answers to research questions]}
+
+\subsection{Validity, Limitations, and Generalizability}
+
+\guidance{Critically evaluate the study. Discuss the most important threats to validity/reliability, sources of uncertainty or bias, limitations of the data or method, and the extent to which the findings can be generalized or transferred to other settings. Explain how these issues affect confidence in the conclusions.}
+
+\placeholder{[Validity, limitations, and generalizability]}
+
+\subsection{Ethics, Societal Aspects, and Sustainability}
+
+\guidance{Discuss the issues that are relevant to this project’s topic, method, and outcomes, rather than giving generic definitions. Consider ethical responsibilities, affected stakeholders, societal consequences, privacy/safety/fairness where applicable, and environmental/economic/social sustainability. Connect the discussion to choices made in the study, the interpretation or use of the results, and possible mitigation of negative impacts. If ethics affected data collection (e.g., consent or anonymization), report the procedural details in the Method section and discuss the broader implications here.}
+
+\placeholder{[Ethics, societal aspects, and sustainability]}
+
+\subsection{Implications and Future Work}
+
+\guidance{Explain the practical or scientific implications of the findings and identify follow-up work that follows logically from the limitations or unanswered questions. Prioritize meaningful next steps rather than listing generic possibilities. The mindset could be: what issues would you tackle if you had to continue this study in your Master’s degree project?}
+
+\placeholder{[Implications and future work]}
+
+\section{Conclusion}
+
+\guidance{Provide a concise final synthesis. State what the study established, answer the research question(s) at the appropriate level of certainty, and identify the main significance. Do not introduce new evidence or arguments.}
+
+\placeholder{[Conclusion]}
+
+\newpage
+
+\unnumberedheading{References}
+
+\guidance{List every source cited in the report and only sources that are actually used. Use one consistent citation style. Prioritize original and scientifically credible sources where available. Copy the bibliographic details from the publisher rather than trusting details generated by an AI tool. Read through the publisher’s bibliographic details, as there are frequent errors, such as missing capitalization, repetitions of the year, and conference abbreviations.}
+
+\placeholder{[References]}
+
+\newpage
+
+\unnumberedheading{Appendix/Appendices (Optional)}
+
+\guidance{Use appendices for supporting material such as detailed parameter tables, questionnaires/interview guides, supplementary results, reproducibility details, or the required AI prompt log. Do not move central results, methodological information, or reasoning to an appendix merely to shorten the main report. The opposition and grading will mainly be done based on the content in the main report. Call this part Appendix if there is only one section, while you should call it Appendices if there are multiple sections.}
+\placeholder{[Optional appendix material]}
+
+\end{document}

@@ -1,0 +1,51 @@
+---
+- name: Check installed Go version
+  ansible.builtin.command: "{{ go_root }}/bin/go version"
+  register: go_version_check
+  changed_when: false
+  failed_when: false
+
+- name: Download Go {{ go_version }}
+  ansible.builtin.get_url:
+    url: "{{ go_url }}"
+    dest: "/tmp/{{ go_tarball }}"
+    mode: "0644"
+  when: go_version_check.rc != 0 or (go_version not in (go_version_check.stdout | default('')))
+
+- name: Remove previous Go install
+  ansible.builtin.file:
+    path: "{{ go_root }}"
+    state: absent
+  when: go_version_check.rc != 0 or (go_version not in (go_version_check.stdout | default('')))
+
+- name: Extract Go {{ go_version }}
+  ansible.builtin.unarchive:
+    src: "/tmp/{{ go_tarball }}"
+    dest: "{{ go_install_dir }}"
+    remote_src: true
+  when: go_version_check.rc != 0 or (go_version not in (go_version_check.stdout | default('')))
+
+- name: Install Go profile snippet
+  ansible.builtin.copy:
+    dest: /etc/profile.d/golang.sh
+    mode: "0644"
+    content: |
+      export GOROOT={{ go_root }}
+      export PATH=$PATH:{{ go_root }}/bin
+      export GOPATH=/home/{{ experiment_user | default('experiment') }}/go
+
+- name: Symlink go into /usr/local/bin
+  ansible.builtin.file:
+    src: "{{ go_root }}/bin/{{ item }}"
+    dest: "/usr/local/bin/{{ item }}"
+    state: link
+    force: true
+  loop:
+    - go
+    - gofmt
+
+- name: Verify Go {{ go_version }}
+  ansible.builtin.command: go version
+  register: go_verify
+  changed_when: false
+  failed_when: go_version not in go_verify.stdout

@@ -1,0 +1,9 @@
+{
+  "run_id": "T1_direct_d20ms_hb500ms_r15",
+  "client_started_ns": 1791982044408341791,
+  "warmup_end_ns": 1791982074408975054,
+  "inject_at_ns": 1791982074468839455,
+  "inject_at": "2026-10-14T12:47:54.468839455Z",
+  "observe_end_ns": 1791982112428726637,
+  "clock": "CLOCK_REALTIME"
+}

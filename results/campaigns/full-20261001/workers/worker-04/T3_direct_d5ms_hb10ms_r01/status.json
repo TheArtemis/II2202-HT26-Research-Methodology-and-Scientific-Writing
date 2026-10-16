@@ -1,0 +1,15 @@
+{
+  "run_id": "T3_direct_d5ms_hb10ms_r01",
+  "ok": true,
+  "started_at": "2026-10-01T09:49:04.183540922Z",
+  "finished_at": "2026-10-01T09:50:14.327593501Z",
+  "inject_at": "2026-10-01T09:49:06.807597784Z",
+  "inject_at_ns": 1790848146807597784,
+  "leader": "A",
+  "seed": 20260945,
+  "topology": "T3",
+  "mode": "direct",
+  "delay": "5ms",
+  "heartbeat": "10ms",
+  "repetition": 1
+}
