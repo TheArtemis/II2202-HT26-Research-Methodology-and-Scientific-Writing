@@ -99,7 +99,9 @@ T1 removes one link, but the leader still has a direct majority. We expect conse
 
 T2 leaves the leader connected only to A. We expect forwarding through A to restore its access to a majority.
 
-In T3, C is isolated and A has an older history of updates, or log. A can reach a majority, but its older log prevents it from winning enough votes. We expect forwarding to let an eligible candidate reach that majority.
+
+
+In T3, C is isolated and since we skip the warmup phase, A has an older log history and even being connected to a majority of nodes he cannot become a leader. We expeacn forwaerind to let another elegible candidate to reach that majority.
 
 T4 is a three-node chain. B and C cannot talk directly, but both connect to A. A direct majority can still exist. We expect forwarding to reduce disruption between the endpoints.
 
