@@ -25,7 +25,7 @@ The paragraphs below are the spoken script. Italic text gives presentation cues 
 
 Hi everyone. I'm Lorenzo, and this is Juozas.
 
-Our project looks at what happens to Raft when some network connections fail, and whether sending messages through another node can help it keep working.
+We study Raft under partial network partitions and weather forwarding messages through another node can restore progress.
 
 I'll explain the problem and our experiment. Then Juozas will present the results and conclusions.
 
@@ -47,9 +47,13 @@ We ask two questions: when does forwarding restore progress, and how much extra 
 
 **Lorenzo**
 
-For a five-node Raft cluster, a majority means three nodes.
+Let's look at previous work and where we fit it
 
-Earlier work by Jensen and colleagues suggested using an overlay network to help Raft under partial partitions. Nifty showed that transparent rerouting can help other systems. OmniPaxos takes another approach by changing the consensus protocol.
+Jensen and colleagues suggested the use of an overlay network to help raft under partial partitions as an alternative to PreVote.
+
+Nifty showed that transparent rerouting could help systems like Kafka with low overhead.
+
+Omnipaxos take another approach to partial connectlvity by changing the consensus protocol and mentions overlay routing as possible alternative.
 
 Our focus is to measure the benefits and the delay of forwarding beneath an unchanged Raft implementation.
 
@@ -59,7 +63,19 @@ Our focus is to measure the benefits and the delay of forwarding beneath an unch
 
 We used HashiCorp Raft and Mininet, which lets us create virtual networks and control their connections and delays.
 
-We compared direct communication with forwarding across five network layouts. For each one, we tested link delays of half a millisecond, five milliseconds, and twenty milliseconds. We repeated every combination thirty times, giving nine hundred trials.
+We compared direct communication with forwarding across five network layouts.
+
+For each one we tested delays of:
+
+- half a millisecond
+- 5 milliseconds
+-  20 milliseconds
+
+We repeated every combination 30 times giving a total of 900 trials.
+
+
+
+The client sends 
 
 The client sent one hundred requests per second. We kept the heartbeat timeout at five hundred milliseconds and disabled PreVote, an optional check before an election.
 
