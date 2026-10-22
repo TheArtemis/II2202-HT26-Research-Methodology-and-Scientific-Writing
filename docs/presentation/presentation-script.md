@@ -33,13 +33,13 @@ I'll explain the problem and our experiment. Then Juozas will present the result
 
 **Lorenzo**
 
-Raft is a a leader based consensus protocol that lets a cluster of replicas agree on a shared ordered log.
+Raft is a leader-based consensus protocol that lets a cluster of replicas agree on a shared ordered log.
 
-The problem we study is partial network partitions where some link connection fails but nodes are still connected through peers.
+We study partial network partitions, where some direct links fail but nodes remain connected through peers.
 
-Raft normal communication protocol does not forward messages and under partitions the system can struggle to commit even tho and alternative path exists through other peers.
+Raft's normal communication does not forward messages. Under a partial partition, the system can struggle to commit even though an alternative path exists through other peers.
 
-Out idea is to enable this to enable this forwaring through connected nodes without touching the raft implementation.
+Our idea is to enable forwarding through connected nodes without touching the Raft implementation.
 
 We ask two questions: when does forwarding restore progress, and how much extra time does a client wait for a commit?
 
@@ -49,11 +49,11 @@ We ask two questions: when does forwarding restore progress, and how much extra 
 
 Let's look at previous work and where we fit in.
 
-Jensen and colleagues suggested the use of an overlay network to help raft under partial partitions as an alternative to PreVote.
+Jensen and colleagues suggested the use of an overlay network to help Raft under partial partitions as an alternative to PreVote.
 
 Nifty showed that transparent rerouting could help systems like Kafka with low overhead.
 
-Omnipaxos take another approach to partial connectlvity by changing the consensus protocol and mentions overlay routing as possible alternative.
+OmniPaxos takes another approach to partial connectivity by changing the consensus protocol and mentions overlay routing as a possible alternative.
 
 Our focus is to measure the benefits and the delay of forwarding beneath an unchanged Raft implementation.
 
@@ -65,23 +65,23 @@ We used HashiCorp Raft and Mininet, which lets us create virtual networks and co
 
 We compared direct communication with forwarding across five network layouts.
 
-For each one we tested delays of:
+For each one, we tested delays of:
 
 - half a millisecond
 - 5 milliseconds
 - 20 milliseconds
 
-We repeated every combination 30 times giving a total of 900 trials.
+We repeated every combination 30 times, giving a total of 900 trials.
 
-For each trial the client sends 100 requeste per second. We keep the heartbeat timeout at 500 milliseconds.
+For each trial, the client sends 100 requests per second. We keep the heartbeat timeout at 500 milliseconds.
 
-For the experiments we wait for 30 seconds for the cluster to warm-up and then cut the selected links to form the desired network partition.
+In each experiment, we wait 30 seconds for the cluster to warm up, then cut the selected links to form the desired network partition.
 
-Then we start the observation that lasts for 30 seconds.
+Then we start an observation period that lasts 30 seconds.
 
-Only for T3 we skipped the warm-up phase to test the configuration under inconsistent logs.
+For T3 only, we skip the warm-up phase to test the configuration with different log histories.
 
-We ran these trials on 16 EC2 instances on AWS and each trial had all the nodes anc client on a single machine.
+We ran these trials on 16 EC2 instances on AWS, and each trial had all the nodes and the client on a single machine.
 
 ## Slide 5 Network configurations
 
@@ -97,7 +97,7 @@ T1 removes one link, but the leader still has a direct majority. We expect conse
 
 T2 leaves the leader connected only to A. We expect forwarding through A to restore its access to a majority.
 
-In T3, C is isolated and since we skip the warmup phase, A has an older log history and even being connected to a majority of nodes he cannot become a leader. We expeacn forwaerind to let another elegible candidate to reach that majority.
+In T3, C is isolated, and we skip the warm-up phase to preserve different log histories. A has an older log, so even though it can reach a majority of nodes, it cannot win enough votes to become leader. We expect forwarding to let another eligible candidate reach that majority.
 
 T4 is a three-node chain. B and C cannot talk directly, but both connect to A. A direct majority can still exist. We expect forwarding to reduce disruption between the endpoints.
 
@@ -121,7 +121,7 @@ T2 shows a clear throughput improvement. At the lowest delay, forwarding increas
 
 T3 gives the clearest contrast. Forwarding produced commits in all ninety trials. Direct communication produced none.
 
-The T3 forwarding bars are lower because the measurement includes restart and setup before the client starts. Once the client was running, throughput was close to one hundred commits per second. The roughly twenty to twenty-two seconds before the first commit includes that setup, so we cannot treat it as election time alone.
+The T3 forwarding bars are lower because the measurement includes restart and setup before the client starts. Once the client was running, throughput was close to one hundred commits per second. The roughly twenty to twenty-two seconds before the first commit include that setup, so we cannot treat it as election time alone.
 
 For T1 and T4, forwarding also helped clients reach leaders that still had a majority. That is an availability benefit, but those cases alone do not show that consensus had stopped.
 
