@@ -75,31 +75,35 @@ We repeated every combination 30 times giving a total of 900 trials.
 
 For each trial the client sends 100 requeste per second. We keep the heartbeat timeout at 500 milliseconds.
 
-For the experiments we wait for 30 seconds for the cluster to warm-up and then cut the selected links to form the desired network partition
+For the experiments we wait for 30 seconds for the cluster to warm-up and then cut the selected links to form the desired network partition.
 
-Usually, we let the cluster settle for thirty seconds, cut the selected links, and observed another thirty seconds. T3 used a special restart procedure to create different log histories.
+Then we start the observation that lasts for 30 seconds.
 
-We ran trials in parallel on AWS, but each individual trial kept its nodes and client on one machine.
+Only for T3 we skipped the warm-up phase to test the configuration under inconsistent logs.
 
-All nine hundred trials passed our setup and data checks. That means we collected valid measurements, including cases where requests failed.
+We ran these trials on 16 EC2 instances on AWS and each trial had all the nodes anc client on a single machine.
 
-## Slide 5 Partitions test quorum access and elections
+## Slide 5 Network configurations
 
 **Lorenzo**
 
-*Point to T2, then T3. Explain the pictures without listing every link.*
+*Move from T0 to T4 as you explain each configuration.*
 
-These two examples show the main problems we wanted to test.
+These are the five network configurations we tested.
 
-In T2, on the left, leader C loses its direct connection to a majority. Node A can still reach the other nodes, so forwarding through A gives the leader another path.
+T0 is the healthy baseline: all five nodes are directly connected. We expect stable progress in both modes.
 
-T3 adds a complication: the nodes have stored different histories of updates. We call these histories logs. A node will reject a candidate whose log is less up to date than its own.
+T1 removes one link, but the leader still has a direct majority. We expect consensus to continue, so this is our control for a non-critical failure.
 
-Here, C is isolated, and A has an older log. With direct communication, the remaining candidates cannot get enough votes. Forwarding allows an eligible candidate, such as B, to reach a majority through A.
+T2 leaves the leader connected only to A. We expect forwarding through A to restore its access to a majority.
 
-We also tested a healthy network, T0. In T1 and T4, we need to consider whether the client can reach the leader, even when that leader still has a majority.
+In T3, C is isolated and A has an older history of updates, or log. A can reach a majority, but its older log prevents it from winning enough votes. We expect forwarding to let an eligible candidate reach that majority.
 
-With that setup in mind, I'll hand over to Juozas for the results.
+T4 is a three-node chain. B and C cannot talk directly, but both connect to A. A direct majority can still exist. We expect forwarding to reduce disruption between the endpoints.
+
+We measure successful client requests in every topology. In T1 and T4, we need to distinguish a client that cannot reach the leader from a cluster that cannot make progress.
+
+I'll hand over to Juozas to show what actually happened.
 
 ## Slide 6 Forwarding sustains client progress
 
