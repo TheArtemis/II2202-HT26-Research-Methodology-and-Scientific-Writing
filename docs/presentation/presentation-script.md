@@ -33,15 +33,13 @@ I'll explain the problem and our experiment. Then Juozas will present the result
 
 **Lorenzo**
 
-Raft is a leader-based consensus protocol that lets a cluster of replicas agree on a shared, ordered log. Distributed databases and similar systems use it to keep replicas consistent.
+Raft is a a leader based consensus protocol that lets a cluster of replicas agree on a shared ordered log.
 
-One node acts as the leader. Before it confirms an update, a majority of the nodes must store it. We call that a commit.
+The problem we study is partial network partitions where some link connection fails but nodes are still connected through peers.
 
-The problem we study is a partial network partition. Some direct connections fail, but a path through another node may still exist. 
+Raft normal communication protocol does not forward messages and under partitions the system can struggle to commit even tho and alternative path exists through other peers.
 
-Raft's normal communication does not use that indirect path, so the system can struggle to commit updates even though the nodes are still connected through other peers.
-
-Our idea is to let the network forward messages through those peers while leaving Raft itself unchanged.
+Out idea is to enable this to enable this forwaring through connected nodes without touching the raft implementation.
 
 We ask two questions: when does forwarding restore progress, and how much extra time does a client wait for a commit?
 
@@ -98,8 +96,6 @@ T0 is the healthy baseline: all five nodes are directly connected. We expect sta
 T1 removes one link, but the leader still has a direct majority. We expect consensus to continue, so this is our control for a non-critical failure.
 
 T2 leaves the leader connected only to A. We expect forwarding through A to restore its access to a majority.
-
-
 
 In T3, C is isolated and since we skip the warmup phase, A has an older log history and even being connected to a majority of nodes he cannot become a leader. We expeacn forwaerind to let another elegible candidate to reach that majority.
 
