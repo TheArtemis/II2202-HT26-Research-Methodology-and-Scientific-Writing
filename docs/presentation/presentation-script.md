@@ -25,7 +25,7 @@ The paragraphs below are the spoken script. Italic text gives presentation cues 
 
 Hi everyone. I'm Lorenzo, and this is Juozas.
 
-We study Raft under partial network partitions and weather forwarding messages through another node can restore progress.
+Today we’ll present our study of Raft under partial network partitions, and show how forwarding messages through intermediate nodes can restore progress and how that affects commit latency.
 
 I'll explain the problem and our experiment. Then Juozas will present the results and conclusions.
 
@@ -33,11 +33,13 @@ I'll explain the problem and our experiment. Then Juozas will present the result
 
 **Lorenzo**
 
-Raft helps several computers agree on the same sequence of updates. Systems such as distributed databases use it to keep their copies consistent.
+Raft is a leader-based consensus protocol that lets a cluster of replicas agree on a shared, ordered log. Distributed databases and similar systems use it to keep replicas consistent.
 
 One node acts as the leader. Before it confirms an update, a majority of the nodes must store it. We call that a commit.
 
-The problem we study is a partial network partition. Some direct connections fail, but a path through another node may still exist. Raft's normal communication does not use that indirect path, so the system can struggle to commit updates even though the nodes are still connected through other peers.
+The problem we study is a partial network partition. Some direct connections fail, but a path through another node may still exist. 
+
+Raft's normal communication does not use that indirect path, so the system can struggle to commit updates even though the nodes are still connected through other peers.
 
 Our idea is to let the network forward messages through those peers while leaving Raft itself unchanged.
 
@@ -69,7 +71,7 @@ For each one we tested delays of:
 
 - half a millisecond
 - 5 milliseconds
--  20 milliseconds
+- 20 milliseconds
 
 We repeated every combination 30 times giving a total of 900 trials.
 
