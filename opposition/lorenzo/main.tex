@@ -1,0 +1,115 @@
+\documentclass[11pt,a4paper]{extarticle}
+
+% Compile with LuaLaTeX. The page geometry, type size, spacing, and headings
+% are chosen to make page density close to the corresponding Word template.
+\usepackage[a4paper,top=0.75in,bottom=0.70in,left=0.80in,right=0.80in,headheight=12pt,footskip=22pt]{geometry}
+\usepackage{fontspec}
+\usepackage[default]{sourcesanspro}
+\usepackage{xcolor}
+\definecolor{headingblue}{HTML}{1F4E79}
+\definecolor{guidancegray}{HTML}{595959}
+\definecolor{responsegray}{HTML}{505050}
+\definecolor{tablegray}{HTML}{F1F3F5}
+\usepackage{tabularx,array,colortbl}
+\usepackage{ragged2e}
+\usepackage{lastpage}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{setspace}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{etoolbox}
+
+% Page style: footer matches the Word template's "1 (4)" convention.
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancyfoot[R]{\fontsize{8}{9}\selectfont \thepage\ (\pageref{LastPage})}
+
+% Body text and paragraph spacing.
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt}
+\setstretch{1.03}
+
+% Section heading styles.
+\titleformat{\section}{\color{headingblue}\bfseries\fontsize{14}{16}\selectfont}{}{0pt}{}
+\titlespacing*{\section}{0pt}{10pt}{4pt}
+\titleformat{\subsection}{\color{headingblue}\bfseries\fontsize{12}{14}\selectfont}{}{0pt}{}
+\titlespacing*{\subsection}{0pt}{7pt}{4pt}
+
+% Template guidance and response placeholders.
+\newcommand{\guidance}[1]{%
+  {\color{guidancegray}\itshape\fontsize{9}{10.2}\selectfont #1\par}\vspace{5pt}%
+}
+\newcommand{\response}[1]{%
+  {\color{responsegray}\fontsize{10.5}{11.8}\selectfont #1\par}\vspace{5pt}%
+}
+\newcommand{\responsebig}[1]{%
+  {\color{responsegray}\fontsize{10.5}{11.8}\selectfont #1\par}\vspace{12pt}%
+}
+
+\newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{#1}}
+\newcolumntype{Y}{>{\RaggedRight\arraybackslash}X}
+\setlength{\tabcolsep}{5pt}
+\renewcommand{\arraystretch}{1.15}
+
+\begin{document}
+
+{\bfseries\fontsize{14}{16}\selectfont Written Opposition Report\par}
+{\itshape\fontsize{11}{13}\selectfont Individual assignment\par}
+\vspace{6pt}
+
+\begin{tabularx}{\textwidth}{>{\columncolor{tablegray}\bfseries}L{1.25in}Y}
+Opponent & Lorenzo Deflorian \\
+KTH email address & ldef@kth.se \\
+Group reviewed & Bernard Rumar and Vivienne Curewitz \\
+Report title & Comparisons of Token Use Across Different Programming Languages \\
+Date & 2026-10-20 \\
+\end{tabularx}
+\vspace{8pt}
+
+\section*{1. AI use and authorship declaration}
+\response{I used generative AI \emph{only} for language feedback, to check spelling and grammar and improve clarity. I did \emph{not} use generative AI tools to generate the critique, evaluate the other group’s report, or draft the text.}
+
+\section*{2. Research Summary}
+\responsebig{The project asks whether generating a working program costs less in Python, Rust, or Haskell, and whether language properties explain the differences. The authors use one model in Claude Code to solve two tasks: a small Advent of Code problem and a larger CommonMark task. An automated harness isolates each run, lets the agent work until the supplied tests pass, and records input, output, cache-read, and cache-write tokens. They run each task-language combination 12 times and retain the 10 successful runs with the lowest token use. The main result is that Python has the lowest reported mean cost for both tasks, while Rust has the lowest cache-read count. The breakdown by token category is useful because it shows where the costs come from. The results support a comparison for this particular setup.}
+
+\section*{3. Overall Scientific Assessment}
+\subsection*{3.1 Strongest Aspect Worth Preserving}
+\response{One strength is that the report separates the four token categories and shows how much each costs (Section 2.3, pp.~5--6; Figures 1 and 2, pp.~8--9). The figures show that the token category with the highest count does not necessarily cost the most. The repeated, automated runs and common stopping rule also make the comparison more systematic than a single demonstration.}
+
+\subsection*{3.2 Alignment from Question to Conclusion}
+\responsebig{The first research question asks whether the three target languages offer cost advantages (Section 1.3, p.~3). Repeating the same tasks and recording token categories is relevant to this question (Sections 2.3--2.4, pp.~5--7). Figures 1b and 2b show lower mean costs for Python among the retained runs. However, Section 5, p.~11, makes the broader claim that the language with the smallest output will be cheapest for any given task. This does not account for possible differences in other billed token categories. Two tasks and one model also support a narrower conclusion: Python had the lowest reported mean cost for the retained runs on both tested tasks, using this model, harness, and pricing scheme.}
+
+\section*{4. Three Prioritized Issues}
+
+\subsection*{4.1 Highest priority issue}
+\response{\textbf{Location:} Sections 2.3--2.4, pp.~5--7; Figures 1--2, pp.~8--9.}
+\response{\textbf{Issue:} The analysis removes the two highest-use runs from each group of 12 and reports means for the remaining successful runs. The figures do not show the spread of the measurements. The report also does not clearly explain how failed runs, timeouts, and retry limits are handled in the analysis.}
+\response{\textbf{Why it matters:} If the aim is to estimate what a developer would spend, the expensive attempts should count too. Excluding these runs means the average covers only the retained attempts, which could affect the languages differently. Repetition is useful, but a mean alone does not show how stable the ranking is. The reported differences therefore should not automatically be described as statistically significant.}
+\begin{samepage}
+\response{\textbf{Recommended action:} Report all 12 runs, the median, and a measure of variation for each task-language pair. Keep the trimmed result as an additional analysis and show whether the ranking changes. State the rule used to rank runs, any stopping limits, and the number and cost of failed attempts. This can largely be addressed with existing logs.}
+\end{samepage}
+
+\subsection*{4.2 Second priority issue}
+\response{\textbf{Location:} Section 2.4, p.~6; Figure 3, p.~10; Discussion, p.~8; Conclusion, p.~11.}
+\response{\textbf{Issue:} The method defines token density as average output tokens divided by average non-blank lines added. The chart subtitle in Figure 3 instead describes code tokens counted using the Claude token-counting API and averaged over all successful runs. Figures 1--2 specify the 10 lowest successful runs. The report should explain whether the numerator counts the full generation process or only the final source code, and why the figures state different run selections.}
+\response{\textbf{Why it matters:} Tokens generated while editing or explaining a solution need not equal the tokens in the final source file. Formatting also affects tokens per line. Without a clear account of what was counted, Figure 3 cannot clearly support the conclusion that token density has no effect on generation cost. Not finding a clear relationship does not show that there is no effect.}
+\response{\textbf{Recommended action:} Clarify what counts as an output token and a non-blank line, identify the included files and runs, and state how Figure 3 was calculated. Make these details explicit in the method and figure caption. If the target is final-code density, tokenize only the final code and report total code tokens and non-blank lines separately. Limit the conclusion to the relationship actually observed in this small dataset.}
+
+\subsection*{4.3 Third priority issue}
+\response{\textbf{Location:} Section 4.1, pp.~9--10; Section 5, p.~11.}
+\response{\textbf{Issue:} The conclusion appropriately labels the training-data and compiler-feedback explanations as speculation. However, Section 4.1 presents lower cache-read totals as evidence of fewer iterations and attributes this to compiler feedback more confidently. Iteration counts are not reported, and the experiment does not independently vary compiler feedback or the other proposed causes.}
+\response{\textbf{Why it matters:} A total number of cache-read tokens does not by itself identify the number of iterations: the amount of context read can differ between calls. Also, the three languages differ in several ways at once, so the design cannot isolate typing, compilation, or programming style. These explanations are plausible, but the reported measurements do not establish them.}
+\response{\textbf{Recommended action:} Apply the conclusion's cautious wording consistently in Section 4.1, distinguishing measured findings from possible explanations. Use the logs to report model calls, test runs, compiler errors, and context sizes if available. State explicitly that language properties and training-data effects were not isolated. A controlled follow-up could vary the feedback available while keeping the task, model, and target language fixed.}
+
+\section*{5. Literature, references, and scientific communication}
+\response{The report distinguishes formal research from informal benchmarks, explains what related studies measure, and compares its approach with those of Luu and Endoh. A short summary of these differences would make its contribution easier to assess.}
+
+\response{The general execution prompt is given in Section 2.3, and the appendix identifies a CommonMark subset of 190 examples. Reproducibility would improve with a repository or artifact reference collecting the exact task identifiers, selected tests, task-specific prompts, code-writing skill, and pinned CLI version. The appendix records that an initial prompt was already cached by an earlier run (p.~16), so the method should explain the cache conditions and run ordering. The different run selections stated in the chart subtitles of Figure 3 and Figures 1--2 should also be explained.}
+
+\response{The abstract should replace broad claims about having no effect with conclusions limited to the tested setup. The societal discussion in Section 4.3 contains factual claims without nearby citations; these should be supported or presented more cautiously. These are comments on the supplied report; the cited external works and raw experimental artifacts were not independently verified.}
+
+\end{document}
