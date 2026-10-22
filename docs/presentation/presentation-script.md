@@ -73,11 +73,9 @@ For each one we tested delays of:
 
 We repeated every combination 30 times giving a total of 900 trials.
 
+For each trial the client sends 100 requeste per second. We keep the heartbeat timeout at 500 milliseconds.
 
-
-The client sends 
-
-The client sent one hundred requests per second. We kept the heartbeat timeout at five hundred milliseconds and disabled PreVote, an optional check before an election.
+For the experiments we wait for 30 seconds for the cluster to warm-up and then cut the selected links to form the desired network partition
 
 Usually, we let the cluster settle for thirty seconds, cut the selected links, and observed another thirty seconds. T3 used a special restart procedure to create different log histories.
 
