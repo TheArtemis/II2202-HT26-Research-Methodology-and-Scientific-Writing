@@ -49,7 +49,7 @@ We ask two questions: when does forwarding restore progress, and how much extra 
 
 **Lorenzo**
 
-Let's look at previous work and where we fit it
+Let's look at previous work and where we fit in.
 
 Jensen and colleagues suggested the use of an overlay network to help raft under partial partitions as an alternative to PreVote.
 
