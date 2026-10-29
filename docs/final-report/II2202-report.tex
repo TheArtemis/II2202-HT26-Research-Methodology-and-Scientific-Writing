@@ -60,7 +60,7 @@
 \renewcommand{\footrulewidth}{0pt}
 \fancyhead[L]{\fontsize{9}{11}\selectfont II2202, Autumn 2026, Period 1}
 \fancyhead[C]{\fontsize{9}{11}\selectfont Final report}
-\fancyhead[R]{\fontsize{9}{11}\selectfont 14 October 2026}
+\fancyhead[R]{\fontsize{9}{11}\selectfont 29 October 2026}
 \fancyfoot[R]{\fontsize{8.5}{10}\selectfont \thepage\ (\pageref{LastPage})}
 
 \begin{document}
@@ -197,6 +197,10 @@ Commit latency is measured using client-observed commit timestamps.
 Figure~\ref{fig:topologies} shows topologies T0--T4 (healthy baseline, non-critical cut, quorum-loss, constrained election, chained connectivity).
 Tables~\ref{tab:independent-variables} and~\ref{tab:dependent-variables} list the independent and dependent variables.
 
+The per-link delays of \(0.5\), \(5\), and \(20\,\mathrm{ms}\) are illustrative experimental settings rather than estimates of latency in a particular deployment or geographical region.
+They provide three levels of artificial link delay over which to compare direct communication and forwarding while keeping the heartbeat timeout fixed at \(500\,\mathrm{ms}\).
+This comparison describes how the observed forwarding cost changes across the selected settings; it does not establish that the settings represent production networks.
+
 \begin{table}[htbp]
   \centering
   \caption{Independent variables.}
@@ -273,12 +277,12 @@ A validated trial means that setup, warmup, connectivity checks, and artifact co
 Validity is supported by paired conditions, fixed binaries and seeds, post-inject connectivity checks, host-load monitoring, and exclusion of invalid warm-ups.
 
 \subsection{Use of AI Tools}
-AI tools assisted with the Mininet and cluster executables, figure and table generation, descriptive summaries of the measurement dataset, and drafting and editing the report. The authors retain responsibility for the experimental design, verification of the results, and interpretation of research claims.
+AI tools assisted with the development of the Mininet and cluster executables, infrastructure setup using Terraform and Ansible to support repeatable experiments, debugging, and improvements to the report's grammar and readability. The authors retain responsibility for the experimental design, writing the report, verifying the results, and interpreting the research claims.
 
 \section{Results}
 
 The campaign comprised \(900\) trials: five topologies, two communication modes, three per-link delays, and \(30\) repetitions per condition.
-All \(900\) passed validation, with no failed runs with a heartbeat timeout of \(500\,\mathrm{ms}\).
+All \(900\) passed setup and artifact validation with a heartbeat timeout of \(500\,\mathrm{ms}\); validation does not require successful client commits.
 
 Figure~\ref{fig:rq1-thr} shows client-observed throughput across the complete delay matrix, and Figure~\ref{fig:rq2-lat} shows the mean of per-run median latencies on successful requests.
 
@@ -298,35 +302,10 @@ Figure~\ref{fig:rq1-thr} shows client-observed throughput across the complete de
 
 \subsection{RQ1: Client progress and recovery}
 
-T0 sustains progress in all \(180\) runs, with throughput between \(99.75\) and \(100.00\) commits/s across modes and delays. 
-No further elections were observed in this topology after warmup.
-Mean time to first successful commit range from \(4.43\) to \(14.53\,\mathrm{ms}\). 
-No warmup election events were recorded in any T0/T1/T2/T4 trial confirming the stability of the experimental Raft setup.
-
-In T1, forwarding maintains stable progress in all \(90\) runs and averages \(99.70\)--\(99.79\) commits/s. 
-Meanwhile, direct mode has zero successful observe requests in \(2/30\), \(4/30\), and \(7/30\) runs at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively. 
-Its corresponding mean throughputs are \(93.20\), \(86.53\), and \(76.50\) commits/s. 
-All \(13\) zero-throughput runs have initial leader E, while the client remains on C. 
-The C--E link is cut. 
-In inspected event logs, the leader retains a quorum while the client cannot reach it. 
-These observations establish an end-to-end availability benefit, without establishing a consensus liveness failure.
-
-T2 provides the clearest throughput contrast where the initial leader loses a direct quorum.
-At \(0.5\,\mathrm{ms}\), direct throughput is \(63.34\pm11.99\) commits/s and forwarding reaches \(96.93\pm1.82\).
-At \(5\,\mathrm{ms}\), the values are \(52.27\pm26.43\) and \(95.78\pm2.36\). 
-At \(20\,\mathrm{ms}\), they are \(55.88\pm22.28\) and \(94.46\pm1.33\).
-Forwarding satisfies the stable progress in all \(90\) runs, compared with \(79/90\) for direct mode. 
-Mean recorded election counts are \(4.10\), \(5.83\), and \(7.50\) with forwarding, versus \(19.97\), \(74.00\), and \(52.33\) with direct communication.
-Mean time to first successful commit are \(20.70\), \(147.88\), and \(261.03\,\mathrm{ms}\) with forwarding, compared with \(940.59\), \(426.60\), and \(396.05\,\mathrm{ms}\) with direct communication.
-
-In T3, direct communication produces no successful client commits in any of the \(90\) runs and has a \(100\%\) client failure rate.
-Forwarding makes stable progress in all \(90\) runs. 
-Mean throughput using injection-to-end timing is \(59.48\pm0.06\), \(58.96\pm0.10\), and \(57.45\pm0.11\) commits/s at the three delays.
-These values include setup before the client starts. 
-From the start of the client requests, the corresponding mean throughputs are \(99.97\), \(99.86\), and \(99.48\) commits/s.
-Mean time to first successful commit are \(20.44\pm0.05\), \(20.87\pm0.08\), and \(22.12\pm0.10\,\mathrm{s}\) (Figure~\ref{fig:t3-rec}).
-The client itself starts approximately \(20.42\), \(20.81\), and \(21.95\,\mathrm{s}\) after injection. 
-These recovery measurements include replica restart, health checks, and leader probing and cannot be interpreted as election delay alone.
+Across the tested conditions, all \(450\) forwarding trials satisfied the defined stable-progress heuristic, compared with \(309/450\) direct trials.
+The clearest contrast occurred in T3: forwarding produced successful client commits in all \(90\) trials, while direct communication produced none.
+Forwarding throughput measured from client start was approximately \(99.5\)--\(100\) commits/s.
+The injection-to-first-commit interval includes replica restart, health checks, and leader probing and should not be interpreted as Raft election time alone (Figure~\ref{fig:t3-rec} and Table~\ref{tab:t3-timing}).
 
 \begin{figure}[H]
   \centering
@@ -335,26 +314,22 @@ These recovery measurements include replica restart, health checks, and leader p
   \label{fig:t3-rec}
 \end{figure}
 
-In T4, forwarding averages \(99.75\)--\(99.94\) commits/s and maintains stable progress in all \(90\) runs.
-Direct throughput averages \(69.99\), \(63.31\), and \(76.51\) commits/s at \(0.5\), \(5\), and \(20\,\mathrm{ms}\). 
-There are \(9/30\), \(11/30\), and \(7/30\) zero-throughput runs, respectively. All \(27\) have initial leader C with the client on B and the B--C link cut.
-The three-node majority still has size two, so C can retain a quorum with A. 
-Direct mode satisfies the stable progress heuristic in \(63/90\) runs.
+In T2, where the initial leader loses its direct quorum, forwarding increased mean throughput by approximately \(53\%\), \(83\%\), and \(69\%\) at per-link delays of \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively, with fewer recorded election events.
+In T1 and T4, forwarding restored client access in cases where the leader retained a direct quorum.
+All zero-throughput direct T1 runs had initial leader E and client C with the C--E link cut; the corresponding T4 runs had initial leader C and client B with the B--C link cut.
+These observations establish an end-to-end availability benefit without establishing a consensus liveness failure.
+T0 sustained progress in both modes, with no recorded election events after warmup.
+No warmup election events were recorded in T0, T1, T2, or T4.
+Detailed throughput, progress, recovery, and event summaries are reported in Appendix~\ref{app:results}, Tables~\ref{tab:throughput}--\ref{tab:events}.
 
 \subsection{RQ2: Commit latency}
 
-\input{latency-table.tex}
-
-In T0, forwarding changes mean median latency from \(2.42\) to \(2.53\,\mathrm{ms}\) at \(0.5\,\mathrm{ms}\) delay, from \(19.27\) to \(19.60\,\mathrm{ms}\) at \(5\,\mathrm{ms}\), and from \(83.16\) to \(84.66\,\mathrm{ms}\) at \(20\,\mathrm{ms}\). 
-These are small descriptive differences.
-
-T2 shows a larger cost where forwarding supports the deciding majority. 
-Mean median latency rises from \(2.41\) in direct mode to \(4.08\,\mathrm{ms}\) with forwarding, from \(28.23\) to \(37.49\,\mathrm{ms}\), and from \(99.47\) to \(166.21\,\mathrm{ms}\) as per-link delay increases. 
+In the healthy baseline T0, the observed absolute latency differences between communication modes were small.
+In T2, forwarding increased the mean of per-run median successful-request latencies by approximately \(69\%\), \(33\%\), and \(67\%\) at per-link delays of \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively.
 Direct latency describes successful requests despite lower throughput and more election events.
-
-T3 has no latency samples for direct communication mode as it was unstable in such mode and thus has not produced any successful commits.
-Mean median latency observed in forwarding mode is \(3.57\), \(35.81\), and \(147.77\,\mathrm{ms}\) at the three delays measured. 
-T1 and T4 also have higher forwarding latency, but their direct latency summaries exclude zero-throughput runs. 
+T3 has latency samples only for forwarding because no direct-mode requests succeeded.
+All latency comparisons describe successful requests and must be read alongside throughput and contributing sample sizes, particularly in T1 and T4 where direct-mode summaries exclude zero-throughput runs.
+Detailed values and sample sizes are reported in Appendix~\ref{app:results}, Table~\ref{tab:latency}.
 
 \section{Discussion}
 
@@ -365,8 +340,9 @@ In T2, forwarding mean throughput is approximately \(53\%\), \(83\%\), and \(69\
 In T3, forwarding produces successful client commits in all \(90\) trials, while direct communication produces none. 
 These observations support H1 within the tested topologies and workload. 
 
-While in topologies T1-T2 and T4 remain stable only in forwarding mode, with direct mode producing lower commit throughput implying instability as the client is likely unable to reach a leader at request time.
-This can be attributed to the fact that after introducing partial partitions, more elections are held and thus more time is spent on the leader election process.
+The T1 and T4 zero-throughput cases reflect failed client-to-leader paths even though the leader retains a direct quorum.
+Their lower direct-mode throughput therefore cannot be attributed to election instability alone.
+T2, by contrast, combines loss of the initial leader's direct quorum with more recorded election events in direct mode.
 T3, the constrained-election scenario, differs because direct communication fails to restore commit progress within the observation period. 
 In this scenario, replicas have divergent logs, and Raft's voting rule requires a candidate's log to be at least as up to date as that of each replica granting its vote.
 Consequently, connectivity to a majority is insufficient if the reachable replicas reject the candidate because its log is outdated. 
@@ -384,9 +360,10 @@ We used fixed software versions, predefined seeds, and a fixed heartbeat timeout
 Hardware and scheduling variability could still affect the measurements. We repeated each condition \(30\) times and report the variation between runs.
 
 Each trial hosts all replicas and its client on a single EC2 instance. The sixteen instances run independent trials in parallel.
-The emulated path delays are static while production delays can vary depending on traffic and congestion.
-
+Hosting all replicas of a trial on one machine introduces shared resource and scheduling effects.
+Static emulated delays do not capture network jitter or changing congestion, and the fixed heartbeat timeout leaves sensitivity to that parameter unmeasured.
 We did not test replicas distributed across machines or geographical regions.
+Consequently, the observed throughput gains, recovery intervals, and latency costs apply to the tested configuration and cannot be assumed to hold in deployments across separate hosts or regions.
 
 Client placement can confound client availability with consensus liveness in T1 and T4. T3 injection-to-first-commit measurements include harness setup, and the stable-progress indicator is a heuristic based on client commits and recorded election events. Event counts come from sampled instrumentation and should not be treated as an exhaustive count of every internal Raft transition.
 
@@ -406,7 +383,9 @@ Small pilot campaigns and shutdown of idle instances could reduce experimental r
 The experiments provide throughput and latency measurements for forwarding beneath HashiCorp Raft in five predefined topologies. In T4, forwarding restored client access even though the leader retained a direct quorum.
 
 A follow-up experiment should control client-to-leader reachability and measure recovery separately from harness setup. This would help distinguish client availability from consensus progress and isolate the time Raft takes to recover.
-Further experiments could vary the heartbeat timeout to test its interaction with path delay, and distribute replicas across hosts or regions to assess forwarding under variable network conditions.
+Future studies should distribute replicas across separate hosts and, where relevant, geographical regions, introduce time-varying network delays, and vary the heartbeat timeout.
+These experiments would assess whether the observed progress benefits and latency costs persist under broader deployment conditions.
+They would extend the present controlled comparison and require a new experimental campaign, so they are reserved for future work.
 
 \section{Conclusion}
 
@@ -416,5 +395,15 @@ These measurements support multi-hop routing as a mitigation for the tested part
 \newpage
 \bibliographystyle{myIEEEtran}
 \bibliography{II2202-report}
+
+\clearpage
+\appendix
+\section{Detailed Experimental Results}
+\label{app:results}
+\input{rq1-tables.tex}
+\clearpage
+\subsection{T3 Timing and Successful-Request Latency}
+\input{t3-timing-table.tex}
+\input{latency-table.tex}
 
 \end{document}

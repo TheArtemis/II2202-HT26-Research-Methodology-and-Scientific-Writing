@@ -161,7 +161,6 @@ table = [
     r"  \centering",
     r"  \caption{Mean of per-run median commit latencies (ms), with the number of runs having successful observe requests. Each condition has 30 validated trials.}",
     r"  \label{tab:latency}",
-    r"  \footnotesize",
     r"  \begin{tabular}{llrrrr}",
     r"    \toprule",
     r"    Topology & Delay (ms) & Direct & $n$ & Forwarding & $n$ \\",
