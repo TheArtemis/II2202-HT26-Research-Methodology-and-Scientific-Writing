@@ -1,0 +1,49 @@
+\begin{table}[H]
+  \centering
+  \caption{Mean client-observed commit throughput (commits/s; \(\pm\) sample SD where reported; \(n=30\) per cell). Denominator is injection to observation end. For T3, values in parentheses are throughput from client start to observation end.}
+  \label{tab:throughput}
+  \footnotesize
+  \begin{tabular}{llrr}
+    \toprule
+    Topology & Delay (ms) & Direct & Forwarding \\
+    \midrule
+    T0 & 0.5--20 & \(99.75\)--\(100.00\) & \(99.75\)--\(100.00\) \\
+    T1 & 0.5 & \(93.20\) & \(99.70\)--\(99.79\) \\
+    T1 & 5 & \(86.53\) & \(99.70\)--\(99.79\) \\
+    T1 & 20 & \(76.50\) & \(99.70\)--\(99.79\) \\
+    T2 & 0.5 & \(63.34\pm11.99\) & \(96.93\pm1.82\) \\
+    T2 & 5 & \(52.27\pm26.43\) & \(95.78\pm2.36\) \\
+    T2 & 20 & \(55.88\pm22.28\) & \(94.46\pm1.33\) \\
+    T3 & 0.5 & \(0\) & \(59.48\pm0.06\) (\(99.97\)) \\
+    T3 & 5 & \(0\) & \(58.96\pm0.10\) (\(99.86\)) \\
+    T3 & 20 & \(0\) & \(57.45\pm0.11\) (\(99.48\)) \\
+    T4 & 0.5 & \(69.99\) & \(99.75\)--\(99.94\) \\
+    T4 & 5 & \(63.31\) & \(99.75\)--\(99.94\) \\
+    T4 & 20 & \(76.51\) & \(99.75\)--\(99.94\) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \caption{Stable-progress outcomes and related RQ1 metrics (\(n=30\) per delay\(\times\)mode cell unless noted). Recovery is injection to first successful client commit. T3 recovery includes harness restart and setup.}
+  \label{tab:progress-recovery}
+  \footnotesize
+  \begin{tabular}{llp{5.8cm}}
+    \toprule
+    Topology & Mode & Outcome summary \\
+    \midrule
+    T0 & both & Stable progress in all \(180\) runs; no post-warmup elections; recovery \(4.43\)--\(14.53\,\mathrm{ms}\). \\
+    T1 & forwarding & Stable progress in all \(90\) runs. \\
+    T1 & direct & Zero-throughput runs: \(2/30\), \(4/30\), \(7/30\) at \(0.5\), \(5\), \(20\,\mathrm{ms}\) (all with initial leader E, client on C, C--E cut). \\
+    T2 & forwarding & Stable progress in all \(90\) runs. Mean elections \(4.10\), \(5.83\), \(7.50\); mean recovery \(20.70\), \(147.88\), \(261.03\,\mathrm{ms}\). \\
+    T2 & direct & Stable progress in \(79/90\) runs. Mean elections \(19.97\), \(74.00\), \(52.33\); mean recovery \(940.59\), \(426.60\), \(396.05\,\mathrm{ms}\). \\
+    T3 & forwarding & Stable progress in all \(90\) runs. Mean recovery \(20.44\pm0.05\), \(20.87\pm0.08\), \(22.12\pm0.10\,\mathrm{s}\); client start \(\approx 20.42\), \(20.81\), \(21.95\,\mathrm{s}\) after injection. \\
+    T3 & direct & No successful commits in any of \(90\) runs (\(100\%\) client failure). \\
+    T4 & forwarding & Stable progress in all \(90\) runs. \\
+    T4 & direct & Stable progress in \(63/90\) runs. Zero-throughput runs: \(9/30\), \(11/30\), \(7/30\) (all with initial leader C, client on B, B--C cut). \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\input{latency-table.tex}
