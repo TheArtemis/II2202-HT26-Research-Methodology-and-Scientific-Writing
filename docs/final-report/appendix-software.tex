@@ -1,0 +1,22 @@
+\begin{table}[H]
+  \centering
+  \caption{Fixed software and platform versions used for all \(900\) trials.}
+  \label{tab:software-versions}
+  \footnotesize
+  \begin{tabular}{llp{6.2cm}}
+    \toprule
+    Component & Version & Notes \\
+    \midrule
+    HashiCorp Raft & \(v1.7.3\) & Go module \texttt{github.com/hashicorp/raft}; commit \texttt{c0dc6a0b2c7e889f31e5ab2f7ed90ceb159acffe}~\cite{hashicorp_raft} \\
+    Mininet & \(2.3.0\) & Release tag \(2.3.0\); commit \texttt{d7f399d7a1200b602bd6a95ae88bae1009664d4a}~\cite{mininet230,lantz2010mininet} \\
+    Go toolchain & \(1.22.12\) & Module path uses \texttt{go 1.22}; workers installed \(1.22.12\) \\
+    YAML library & \(v3.0.1\) & \texttt{gopkg.in/yaml.v3} (topology and campaign configs) \\
+    Logging library & \(v1.6.3\) & \texttt{github.com/hashicorp/go-hclog} \\
+    Host OS & Ubuntu \(22.04\) LTS & AWS AMI \texttt{ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*} \\
+    Compute & \texttt{c5a.large} & Sixteen on-demand instances in \texttt{eu-north-1} (2\,vCPU each) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+All workers were provisioned from the same Ansible playbook and Terraform fleet definition so that Raft binaries, Mininet, Go, OS image, and instance type were identical across the campaign.
+PreVote remained disabled in HashiCorp Raft for every trial.
