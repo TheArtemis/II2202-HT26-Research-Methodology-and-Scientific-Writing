@@ -280,7 +280,7 @@ Forwarding routes and failed-link sets are taken from topology YAML files so bot
 For RQ1, within each topology we compare direct vs.\ forwarding on client-observed commit throughput, recovery time, term counts, and client failure rate.
 $T0$ and $T1$ are control topologies mostly used to test our experimental setup and configuration.
 Primary measured variables are commit throughput and recovery time.
-For RQ2, we take the median and 95th percentile client commit latency per run and contrast cells where a forwarded follower is needed for the deciding majority (notably T2) with direct-quorum controls (T0 and T1).
+For RQ2, we take the median client commit latency per run and contrast cells where a forwarded follower is needed for the deciding majority (notably T2) with direct-quorum controls (T0 and T1).
 When only forwarding is live (T3), latency is reported for that mode alone.
 With $n=30$ per condition we report means and sample standard deviations rather than formal hypothesis tests. Latency summaries exclude runs without successful observe requests --- their sample sizes are reported separately.
 Throughput divides successful client commits by the recorded interval from injection to observation end. This interval includes post-injection validation and, for T3, replica restart and setup before the client starts. We additionally report T3 throughput using the interval from client start to observation end.
@@ -355,8 +355,9 @@ In T2, forwarding mean throughput is approximately \(53\%\), \(83\%\), and \(69\
 In T3, forwarding produces successful client commits in all \(90\) trials, while direct communication produces none. 
 These observations support H1 within the tested topologies and workload. 
 
-While in topologies T1-T2 and T4 remain stable only in forwarding mode, with direct mode producing lower commit throughput implying instability as the client is likely unable to reach a leader at request time.
-This can be attributed to the fact that after introducing partial partitions, more elections are held and thus more time is spent on the leader election process.
+In T1 and T4, lower direct mode throughput is driven by zero throughput runs in which the client cannot reach a leader that still retains a direct quorum. 
+Forwarding restores that client access and does not by itself establish consensus failure.
+In T2, the throughput gap instead aligns with more recorded election events under direct mode when the initial leader loses a direct quorum path.
 T3, the constrained-election scenario, differs because direct communication fails to restore commit progress within the observation period. 
 In this scenario, replicas have divergent logs, and Raft's voting rule requires a candidate's log to be at least as up to date as that of each replica granting its vote.
 Consequently, connectivity to a majority is insufficient if the reachable replicas reject the candidate because its log is outdated. 
