@@ -144,7 +144,8 @@ The network is emulated using Mininet and is populated by required number of Raf
 In order to answer both research questions, we need to establish the behavior of Raft cluster under the same partial network topologies using default point-to-point links only.
 Thus, we have to repeat each experiment with both direct communication mode (using point-to-point links only) and forwarding mode (shortest route to the next available alternative).
 We decided to use some of the partial network topologies from Omnipaxos paper~\cite{ng2023omnipaxos} as they expose scenarios under which leader can still reach majority quorum via intermediate nodes.
-In addition, same experiments are repeated with different artificial per-link delays.
+In addition, same experiments are repeated with different artificial per-link delays to investigate the impact of network delay on the Raft cluster behavior in terms of liveliness and latency.
+This is additionaly important as requests go through multiple hops, and therefore, such delays can accumulate impacting the throughput and latency.
 Other parameters and conditions such as computing resources, heartbeat timeout, client workload rate, payload size and observation periods are kept constant.
 This design aims to isolate the effect of multi-hop communication within each topology and delay.
 
@@ -292,41 +293,21 @@ Figure~\ref{fig:rq1-thr} shows client-observed throughput across the complete de
 \begin{figure}[H]
   \centering
   \includegraphics[width=\linewidth]{figures/rq2-latency.png}
-  \caption{Mean of per-run median successful-request latencies (\(\pm\) sample SD). Direct T3 has no successful requests; sample sizes are given in Table~\ref{tab:latency}.}
+  \caption{Mean of per-run median successful-request latencies (\(\pm\) sample SD). Direct T3 has no successful requests; sample sizes are given in Appendix Table~\ref{tab:latency}.}
   \label{fig:rq2-lat}
 \end{figure}
 
+Tables~\ref{tab:throughput}--\ref{tab:latency} in the appendix list the full numerical summaries referenced below.
+
 \subsection{RQ1: Client progress and recovery}
 
-T0 sustains progress in all \(180\) runs, with throughput between \(99.75\) and \(100.00\) commits/s across modes and delays. 
-No further elections were observed in this topology after warmup.
-Mean time to first successful commit range from \(4.43\) to \(14.53\,\mathrm{ms}\). 
-No warmup election events were recorded in any T0/T1/T2/T4 trial confirming the stability of the experimental Raft setup.
-
-In T1, forwarding maintains stable progress in all \(90\) runs and averages \(99.70\)--\(99.79\) commits/s. 
-Meanwhile, direct mode has zero successful observe requests in \(2/30\), \(4/30\), and \(7/30\) runs at \(0.5\), \(5\), and \(20\,\mathrm{ms}\), respectively. 
-Its corresponding mean throughputs are \(93.20\), \(86.53\), and \(76.50\) commits/s. 
-All \(13\) zero-throughput runs have initial leader E, while the client remains on C. 
-The C--E link is cut. 
-In inspected event logs, the leader retains a quorum while the client cannot reach it. 
-These observations establish an end-to-end availability benefit, without establishing a consensus liveness failure.
-
-T2 provides the clearest throughput contrast where the initial leader loses a direct quorum.
-At \(0.5\,\mathrm{ms}\), direct throughput is \(63.34\pm11.99\) commits/s and forwarding reaches \(96.93\pm1.82\).
-At \(5\,\mathrm{ms}\), the values are \(52.27\pm26.43\) and \(95.78\pm2.36\). 
-At \(20\,\mathrm{ms}\), they are \(55.88\pm22.28\) and \(94.46\pm1.33\).
-Forwarding satisfies the stable progress in all \(90\) runs, compared with \(79/90\) for direct mode. 
-Mean recorded election counts are \(4.10\), \(5.83\), and \(7.50\) with forwarding, versus \(19.97\), \(74.00\), and \(52.33\) with direct communication.
-Mean time to first successful commit are \(20.70\), \(147.88\), and \(261.03\,\mathrm{ms}\) with forwarding, compared with \(940.59\), \(426.60\), and \(396.05\,\mathrm{ms}\) with direct communication.
-
-In T3, direct communication produces no successful client commits in any of the \(90\) runs and has a \(100\%\) client failure rate.
-Forwarding makes stable progress in all \(90\) runs. 
-Mean throughput using injection-to-end timing is \(59.48\pm0.06\), \(58.96\pm0.10\), and \(57.45\pm0.11\) commits/s at the three delays.
-These values include setup before the client starts. 
-From the start of the client requests, the corresponding mean throughputs are \(99.97\), \(99.86\), and \(99.48\) commits/s.
-Mean time to first successful commit are \(20.44\pm0.05\), \(20.87\pm0.08\), and \(22.12\pm0.10\,\mathrm{s}\) (Figure~\ref{fig:t3-rec}).
-The client itself starts approximately \(20.42\), \(20.81\), and \(21.95\,\mathrm{s}\) after injection. 
-These recovery measurements include replica restart, health checks, and leader probing and cannot be interpreted as election delay alone.
+The constrained-election topology (T3) shows the strongest liveness contrast between direct and forwarding modes.
+Direct communication produces no successful client commits in any of the \(90\) runs (\(100\%\) client failure) of this scenario.
+Forwarding restores stable progress in all \(90\) runs.
+Once the client is running, mean throughput under forwarding is within \(1\%\) of the client request rate across all three tested delays. 
+Lower throughput rates in Table~\ref{tab:throughput} reflect harness setup before the client starts rather than slower commits.
+After partial topology injection, mean recovery times are about \(20\)--\(22\,\mathrm{s}\) (Figure~\ref{fig:t3-rec}) and include replica restart, health checks, probing the leader and election events.
+Full result values are in Tables~\ref{tab:throughput} and~\ref{tab:progress-recovery}.
 
 \begin{figure}[H]
   \centering
@@ -335,26 +316,21 @@ These recovery measurements include replica restart, health checks, and leader p
   \label{fig:t3-rec}
 \end{figure}
 
-In T4, forwarding averages \(99.75\)--\(99.94\) commits/s and maintains stable progress in all \(90\) runs.
-Direct throughput averages \(69.99\), \(63.31\), and \(76.51\) commits/s at \(0.5\), \(5\), and \(20\,\mathrm{ms}\). 
-There are \(9/30\), \(11/30\), and \(7/30\) zero-throughput runs, respectively. All \(27\) have initial leader C with the client on B and the B--C link cut.
-The three-node majority still has size two, so C can retain a quorum with A. 
-Direct mode satisfies the stable progress heuristic in \(63/90\) runs.
+In T2, where the initial leader loses a direct quorum, forwarding raises mean throughput by about \(53\%\), \(83\%\), and \(69\%\) at \(0.5\), \(5\), and \(20\,\mathrm{ms}\) relative to direct mode, and meets the stable-progress criterion in all \(90\) runs versus \(79/90\) for direct.
+Mean recovery time is about \(45\times\), \(3\times\), and \(1.5\times\) times faster under forwarding at the three delays, with substantially fewer recorded election events (Table~\ref{tab:progress-recovery}).
+
+T0 is essentially unchanged between modes: both sustain near client request throughput in all \(180\) runs, with no elections after warmup.
+In T1 and T4, forwarding keeps near client offered throughput and full stable progress, while mean direct throughput is about \(7\)--\(30\%\) lower in T1 and about \(23\)--\(37\%\) lower in T4, driven by zero-throughput runs in which the client cannot reach a leader that still retains a quorum (Table~\ref{tab:progress-recovery}).
+No warmup election events were recorded in any T0/T1/T2/T4 trial.
 
 \subsection{RQ2: Commit latency}
 
-\input{latency-table.tex}
+In the healthy baseline (T0), forwarding changes mean median latency by only about \(2\)--\(5\%\) across delays (Table~\ref{tab:latency}).
+Where forwarded paths support the deciding majority (T2), mean median latency is about \(69\%\), \(33\%\), and \(67\%\) higher under forwarding than under direct mode at \(0.5\), \(5\), and \(20\,\mathrm{ms}\).
+Direct-mode latency in T2 still describes successful requests despite lower throughput and more election events.
 
-In T0, forwarding changes mean median latency from \(2.42\) to \(2.53\,\mathrm{ms}\) at \(0.5\,\mathrm{ms}\) delay, from \(19.27\) to \(19.60\,\mathrm{ms}\) at \(5\,\mathrm{ms}\), and from \(83.16\) to \(84.66\,\mathrm{ms}\) at \(20\,\mathrm{ms}\). 
-These are small descriptive differences.
-
-T2 shows a larger cost where forwarding supports the deciding majority. 
-Mean median latency rises from \(2.41\) in direct mode to \(4.08\,\mathrm{ms}\) with forwarding, from \(28.23\) to \(37.49\,\mathrm{ms}\), and from \(99.47\) to \(166.21\,\mathrm{ms}\) as per-link delay increases. 
-Direct latency describes successful requests despite lower throughput and more election events.
-
-T3 has no latency samples for direct communication mode as it was unstable in such mode and thus has not produced any successful commits.
-Mean median latency observed in forwarding mode is \(3.57\), \(35.81\), and \(147.77\,\mathrm{ms}\) at the three delays measured. 
-T1 and T4 also have higher forwarding latency, but their direct latency summaries exclude zero-throughput runs. 
+T3 has no direct-mode latency samples because that mode produced no successful commits, while forwarding mode medians appear in Table~\ref{tab:latency}.
+T1 and T4 also show higher forwarding latency, but their direct-mode summaries exclude zero-throughput runs.
 
 \section{Discussion}
 
@@ -413,6 +389,12 @@ Further experiments could vary the heartbeat timeout to test its interaction wit
 In a campaign of 900 validated trials with a 500 ms heartbeat timeout, all 450 forwarding trials satisfied the defined stable-progress heuristic, compared with 309 of 450 direct trials. Forwarding produced successful commits in all 90 constrained-election trials (T3), where direct communication produced none, and achieved higher mean throughput under quorum loss (T2). Mean median successful-request latency was also higher in T2 when forwarded paths supported quorum replication. T1 and T4 benefited from restored client access, although those observations alone do not establish consensus failure in direct mode.
 
 These measurements support multi-hop routing as a mitigation for the tested partial partitions under this workload and timeout configuration. Generalization to other deployments requires further evaluation. Controlled client placement and recovery measurements that separate harness setup from protocol behaviour are needed for stronger causal conclusions.
+
+\newpage
+\appendix
+\section{Detailed numerical results}
+\input{appendix-tables.tex}
+
 \newpage
 \bibliographystyle{myIEEEtran}
 \bibliography{II2202-report}
