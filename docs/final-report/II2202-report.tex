@@ -71,7 +71,13 @@ Juozas Skarbalius <juozas@kth.se>\par
 \vspace{2pt}
 
 \unnumberedheading{Abstract}
-Partial network partitions can disrupt Raft even when nodes remain reachable through intermediate peers. We compare direct communication with transparent multi-hop forwarding beneath an unchanged HashiCorp Raft implementation across five topologies and three per-link delays. Of 900 validated trials with a 500 ms heartbeat timeout, all 450 forwarding trials satisfied the defined stable-progress criterion, compared with 309 direct trials. Forwarding improved throughput under quorum loss in T2 and produced successful commits in T3, where direct communication produced none. Successful-request latency changed little in the healthy baseline and increased when forwarded paths were required for quorum replication. In T1 and T4, forwarding also restored client access to leaders that retained a direct quorum.
+Distributed databases, file systems, and cluster orchestration services rely on consensus to agree on a shared state.
+Complete network partitions are well understood---as long as a majority of nodes can communicate, commits can proceed---but \emph{partial} partitions, where individual links fail while nodes remain reachable through intermediate peers, can still stall Raft because it assumes direct point-to-point links and does not forward messages.
+We evaluate whether transparent multi-hop forwarding beneath an unchanged HashiCorp Raft implementation restores progress, using Mininet to inject controlled link failures and compare direct communication against forwarding across three per-link delays and five topologies: a healthy baseline (T0) and four partial-partition scenarios---a non-critical cut (T1), quorum loss (T2), constrained election (T3), and chained connectivity (T4).
+Of 900 validated trials with a 500\,ms heartbeat timeout, all 450 forwarding trials satisfied the defined stable-progress criterion, compared with 309 direct trials.
+Forwarding improved throughput under quorum loss (T2) and produced successful commits in the constrained-election case (T3), where direct communication produced none.
+Successful-request latency increased when forwarded paths were required for securing majority quorum.
+In T1 and T4, forwarding also restored client access to leaders that retained a direct quorum.
 
 \newpage
 
@@ -81,15 +87,15 @@ Partial network partitions can disrupt Raft even when nodes remain reachable thr
 
 Distributed databases, file systems, and cluster orchestration services rely on consensus to agree on a shared state.
 Raft is a leader-based consensus protocol --- the leader appends client entries and replicates them to followers with an entry considered to be committed once a majority has stored it~\cite[Sec.~5.3]{ongaro2014raft}.
-To make progress leader must be able to reach a majority of all replicas.
+To make progress the leader must be able to reach a majority of all replicas.
 Otherwise, the cluster is unable to make progress until new leader is elected.
 Safety is ensured under arbitrary message delay~\cite[Secs.~5.3--5.4]{ongaro2014raft}.
 
 Complete network partitions are well understood---as long as there exists a majority of nodes that can communicate with each other, the entries can be committed.
 \emph{Partial} partitions are different---individual links fail while nodes remain virtually reachable through intermediate nodes~\cite[Sec.~2]{alfatafta2020nifty}.
 Raft assumes direct point-to-point communication links between nodes and does not forward messages through intermediate nodes~\cite[Secs.~5.1--5.3]{ongaro2014raft}.
-For example, in a three node cluster, a leader that loses two direct follower links may therefore stall even though those followers remain reachable at the network layer.
-A notable real-world example is the Cloudflare outage in 2020, where a partial network failure disrupted etcd's Raft cluster~\cite{cloudflare2020byzantine}.
+For example, in a three node cluster, a leader that loses two direct follower links may stall even though those followers remain reachable at the network layer.
+A notable real-world example is Cloudflare's November 2020 incident, where a partial switch failure disrupted an etcd Raft cluster and left the API and dashboard degraded for six hours and 33 minutes~\cite{cloudflare2020byzantine}.
 
 We therefore test whether forwarding messages through surviving links restores Raft's progress and measure its latency cost.
 
@@ -150,12 +156,14 @@ Other parameters and conditions such as computing resources, heartbeat timeout, 
 This design aims to isolate the effect of multi-hop communication within each topology and delay.
 
 Each experiment run consists of the warmup period allowing the cluster to elect stable leader. 
-The client is started which sends requests to the cluster at the constant rate, and awaits and records the timestamps of acknowledged requests.
+The client is started which sends requests to the cluster at a constant rate, and awaits and records the timestamps of acknowledged requests.
 After such period, required links are cut to match the topology under test.
 Afterwards, the cluster is observed for $30$ seconds and results are collected.
+We chose this window because it is long relative to the fixed \(500\,\mathrm{ms}\) heartbeat timeout (sixty timeout periods) and yields about \(3000\) open-loop client requests at \(100\) requests/s, which is enough to estimate throughput and latency after injection while remaining short enough to run \(900\) trials within the course deadline.
+A shorter window would risk missing delayed recovery or election churn, while a much longer one would mainly increase cost without changing the paired mode comparison.
 However, we acknowledge that there might be some variability between the identical runs due to network scheduling, runtime warmup unpredictability and other factors.
 To minimize the impact of such variability in our results, we repeat each experiment run $30$ times.
-This is known systems benchmarking strategy that uses repetitions allowing researchers to be aware of measurement uncertainty~\cite{kalibera2013rigorous}.
+This is a known systems benchmarking strategy that uses repetitions allowing researchers to be aware of measurement uncertainty~\cite{kalibera2013rigorous}.
 
 The design is a comparison of communication mode (\(\mathrm{direct}\) vs.\ \(\mathrm{forwarding}\)) across five predefined topologies (T0--T4) and selected per-link delays.
 T0 is a healthy baseline and T1 a control in which the leader retains a direct majority after a non-critical cut. T2--T4 instantiate quorum-loss, constrained election, and chained connectivity.
@@ -175,25 +183,31 @@ We constrain the study to HashiCorp Raft with a fixed heartbeat timeout (\(500\,
 Relative to the research plan, the methodological core---controlled Mininet experiment, direct vs.\ preconfigured forwarding, topologies T0--T4, and delay factors---is unchanged.
 Two practical changes were made.
 The plan intended to run all trials on a single personal machine. To execute all experiments within the course deadline we moved execution to AWS EC2 instances, with each instance uploading Raft logs, client logs, and metrics to S3 for later merge.
-We also fixed the heartbeat timeout at \(500\,\mathrm{ms}\) rather than testing against multiple timeout values, so that delays can be interpreted against one baseline.
+We also fixed the heartbeat timeout at \(500\,\mathrm{ms}\) rather than the multiple values planned originally, so that delays can be interpreted against one baseline and the full topology\(\times\)mode\(\times\)delay matrix remains feasible at \(n=30\).
+That value is on the order of HashiCorp Raft's library defaults \cite{hashicorp_raft} and we believe it is representative of aggressive LAN or datacenter settings.
 
 \subsection{Experimental Platform and Conditions}
 
 We ran repeated HashiCorp Raft trials in Mininet under fixed topology, communication mode, and per-link delay~\cite{hashicorp_raft,lantz2010mininet,mininet230}.
+Exact library, emulator, toolchain, OS, and instance versions are listed in Appendix~\ref{app:software}.
 
-Since HashiCorp Raft is a Go library and Mininet exposes Python API, we implemented Mininet Go wrapper with ability to define Mininet configuration using Go and Yaml files.
+Since HashiCorp Raft is a Go library and Mininet exposes Python API, we implemented Mininet Go wrapper with ability to define Mininet configuration using Go and YAML files.
 Go then relays this configuration to Mininet server through RPC.
-Surviving point-to-point links for each topology are defined in respective Yaml files for convenience.
+Surviving point-to-point links for each topology are defined in respective YAML files for convenience.
 Experiment controller, upon the start of the run, creates a complete topology (without partitions), performs basic health and leader stability checks, and then cuts down links to match tested topology.
 A basic overlay routing is implemented to reroute traffic around failed links through intermediate nodes using BFS algorithm and chooses first viable hop.
 
 In direct communication mode, replicas use point-to-point links only.
-In forwarding mode, requests are forwarded through shortest-path alternative if the corresponding point-to-point link is not available.
-Heartbeat timeout is fixed at \(500\,\mathrm{ms}\).
+In forwarding mode, requests are forwarded through the shortest-path alternative if the corresponding point-to-point link is not available.
+Heartbeat timeout is fixed at \(500\,\mathrm{ms}\) for the reasons above.
 We used HashiCorp Raft with its optional PreVote mechanism disabled in all trials.
 Trials ran on sixteen AWS \texttt{c5a.large} EC2 instances in \texttt{eu-north-1}.
 Each instance uploaded client logs, Raft events, and metrics to an S3 bucket for later merging and filtering.
 Commit latency is measured using client-observed commit timestamps.
+
+It is not a goal of this experiment to test the performance of multi-hop communication in cross-regional Raft deployments. 
+Our experiment is strictly limited to a simulated and reproducible environment with static network delays.
+This setup reflects our research questions and the results can serve as the basis for further experiments using more realistic deployment scenarios.
 
 Figure~\ref{fig:topologies} shows topologies T0--T4 (healthy baseline, non-critical cut, quorum-loss, constrained election, chained connectivity).
 Tables~\ref{tab:independent-variables} and~\ref{tab:dependent-variables} list the independent and dependent variables.
@@ -285,14 +299,14 @@ Figure~\ref{fig:rq1-thr} shows client-observed throughput across the complete de
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\linewidth]{figures/rq1-throughput.png}
+  \includegraphics[width=0.8\linewidth]{figures/rq1-throughput.png}
   \caption{Mean client-observed commit throughput (\(\pm\) sample SD; \(n=30\) per condition). The denominator is injection to observation end, including T3 setup before client start.}
   \label{fig:rq1-thr}
 \end{figure}
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\linewidth]{figures/rq2-latency.png}
+  \includegraphics[width=0.8\linewidth]{figures/rq2-latency.png}
   \caption{Mean of per-run median successful-request latencies (\(\pm\) sample SD). Direct T3 has no successful requests; sample sizes are given in Appendix Table~\ref{tab:latency}.}
   \label{fig:rq2-lat}
 \end{figure}
@@ -311,7 +325,7 @@ Full result values are in Tables~\ref{tab:throughput} and~\ref{tab:progress-reco
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.70\linewidth]{figures/rq1-t3-recovery.png}
+  \includegraphics[width=0.45\linewidth]{figures/rq1-t3-recovery.png}
   \caption{T3 forwarding: injection to first successful client commit (mean \(\pm\) sample SD, \(n=30\) at each delay). Includes harness restart and setup.}
   \label{fig:t3-rec}
 \end{figure}
@@ -356,15 +370,16 @@ Successful-request latency excludes failures and must be interpreted together wi
 The observations are consistent with earlier proposals to mask partial partitions through network detours~\cite{jensen2021raft,alfatafta2020nifty,ng2023omnipaxos}.
 
 \subsection{Validity, Limitations, and Generalizability}
-We used fixed software versions, predefined seeds, and a fixed heartbeat timeout, with the same EC2 instance type, network configuration, and operating system across workers.
+We used fixed software versions (Appendix~\ref{app:software}, Table~\ref{tab:software-versions}), predefined seeds, and a fixed heartbeat timeout, with the same EC2 instance type, network configuration, and operating system across workers.
 Hardware and scheduling variability could still affect the measurements. We repeated each condition \(30\) times and report the variation between runs.
 
-Each trial hosts all replicas and its client on a single EC2 instance. The sixteen instances run independent trials in parallel.
 The emulated path delays are static while production delays can vary depending on traffic and congestion.
+However, it was not the goal of this experiment to test multi-hop Raft in multiple host or cross-regional deployments. 
+Our experiment strictly tried to evaluate the feasibility of Raft with transparent network multi-hop routing in terms of liveness and latency cost.
+However, we acknowledge that the results might not be generalizable to multi-host or cross-regional deployments.
 
-We did not test replicas distributed across machines or geographical regions.
-
-Client placement can confound client availability with consensus liveness in T1 and T4. T3 injection-to-first-commit measurements include harness setup, and the stable-progress indicator is a heuristic based on client commits and recorded election events. Event counts come from sampled instrumentation and should not be treated as an exhaustive count of every internal Raft transition.
+Client placement can confound client availability with consensus liveness in T1 and T4. T3 injection-to-first-commit measurements include harness setup, and the stable-progress indicator is a heuristic based on client commits and recorded election events.
+Event counts come from sampled instrumentation and should not be treated as an exhaustive count of every internal Raft transition.
 
 \subsection{Ethics, Societal Aspects, and Sustainability}
 
@@ -379,11 +394,19 @@ Small pilot campaigns and shutdown of idle instances could reduce experimental r
 
 \subsection{Implications and Future Work}
 
-The experiments provide throughput and latency measurements for forwarding beneath HashiCorp Raft in five predefined topologies. In T4, forwarding restored client access even though the leader retained a direct quorum.
+The experiments provide throughput and latency measurements for forwarding beneath HashiCorp Raft in five predefined topologies. 
+In T4, forwarding restored client access even though the leader retained a direct quorum.
 
-A follow-up experiment should control client-to-leader reachability and measure recovery separately from harness setup. This would help distinguish client availability from consensus progress and isolate the time Raft takes to recover.
-Further experiments could vary the heartbeat timeout to test its interaction with path delay, and distribute replicas across hosts or regions to assess forwarding under variable network conditions.
+Our results show that Raft can be coupled with transparent multi-hop routing to improve availability of the cluster in case of failures related to partial network partitions.
+While our experiments were conducted in a simulated environment, the liveliness results can still hold in production deployments where highest per-link delay is not higher than $20\,\mathrm{ms}$ (highest tested delay).
+Latency cost of forwarding in real production deployments might vary depending on the network conditions and the workload.
 
+Future work could focus on the evaluation of multi-hop routing in production deployments with variable network conditions.
+In addition, it is unclear how multi-hop routing would perform with other consensus protocols (e.g., Paxos) and their variants. 
+Lastly, in our experiment, we used a fixed heartbeat timeout of $500\,\mathrm{ms}$. 
+Production deployments tend to keep the heartbeat timeout as little as possible to improve the throughput.
+Therefore, in such environments, the heartbeat interval is usually dynamically adjusted based on the network conditions. 
+Thus, future work can focus on the evaluation of multi-hop routing for consensus with dynamically adjusted heartbeat timeouts.
 \section{Conclusion}
 
 In a campaign of 900 validated trials with a 500 ms heartbeat timeout, all 450 forwarding trials satisfied the defined stable-progress heuristic, compared with 309 of 450 direct trials. Forwarding produced successful commits in all 90 constrained-election trials (T3), where direct communication produced none, and achieved higher mean throughput under quorum loss (T2). Mean median successful-request latency was also higher in T2 when forwarded paths supported quorum replication. T1 and T4 benefited from restored client access, although those observations alone do not establish consensus failure in direct mode.
@@ -394,6 +417,10 @@ These measurements support multi-hop routing as a mitigation for the tested part
 \appendix
 \section{Detailed numerical results}
 \input{appendix-tables.tex}
+
+\section{Software and platform versions}
+\label{app:software}
+\input{appendix-software.tex}
 
 \newpage
 \bibliographystyle{myIEEEtran}
