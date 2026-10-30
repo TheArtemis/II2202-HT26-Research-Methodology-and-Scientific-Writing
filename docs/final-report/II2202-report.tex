@@ -282,7 +282,7 @@ $T0$ and $T1$ are control topologies mostly used to test our experimental setup 
 Primary measured variables are commit throughput and recovery time.
 For RQ2, we take the median and 95th percentile client commit latency per run and contrast cells where a forwarded follower is needed for the deciding majority (notably T2) with direct-quorum controls (T0 and T1).
 When only forwarding is live (T3), latency is reported for that mode alone.
-With $n=30$ per condition we report means and sample standard deviations rather than formal hypothesis tests. Latency summaries exclude runs without successful observe requests their sample sizes are reported separately.
+With $n=30$ per condition we report means and sample standard deviations rather than formal hypothesis tests. Latency summaries exclude runs without successful observe requests --- their sample sizes are reported separately.
 Throughput divides successful client commits by the recorded interval from injection to observation end. This interval includes post-injection validation and, for T3, replica restart and setup before the client starts. We additionally report T3 throughput using the interval from client start to observation end.
 A validated trial means that setup, warmup, connectivity checks, and artifact collection completed. The stable-progress indicator requires a successful client commit, a recorded recovery, and an election-event count no greater than $\max(5,\lfloor N_{\mathrm{ok}}/10\rfloor+3)$. It is a descriptive heuristic, not a proof of consensus liveness.
 Validity is supported by paired conditions, fixed binaries and seeds, post-inject connectivity checks, host-load monitoring, and exclusion of invalid warm-ups.
